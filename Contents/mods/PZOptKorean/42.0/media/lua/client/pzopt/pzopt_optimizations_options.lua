@@ -297,6 +297,48 @@ local SECTIONS = {
         },
     },
     {
+        title = "Entity updates on the worker threads", clip = "horde",
+        entries = {
+            { key = "entityUpdateParallel", label = "Entity updates on other cores (experimental)",
+              tip = "The update loop itself - the only part of the frame that grows with the whole moving-object population - runs the eligible entities on the worker threads instead of one after another on the game thread, with the stock four-step sequence per entity kept exactly. Players, animals, vehicles and physics objects stay on the game thread; Lua events fired from a worker are replayed on the game thread in the stock order; an entity that fails on a worker turns the batching off for the rest of the session. EXPERIMENTAL: it moves the simulation itself, so it is off by default." },
+            { key = "entityUpdatePipeline", label = "Entity updates: overlap with the next batch",
+              tip = "With entity updates on other cores, the workers finish one batch while the game thread already collects the next, instead of standing still between batches. The frame-timing multiplier each entity reads is captured per batch, so timings stay exactly right. Only active while the setting above is on." },
+            { key = "emitterDefer", label = "Entity updates: sound ticks after the batch",
+              tip = "With entity updates on other cores, a zombie's per-frame sound work (FMOD parameters, position, tick) queues instead of running on the worker, and the game thread runs the queue right after the batch in the stock order - same frame, before anything renders. The workers stop queuing on the sound locks, so the batch finishes sooner." },
+            { key = "entityUpdateSafeStates", label = "Entity updates: calm zombies only",
+              tip = "With entity updates on other cores, only zombies that are idle, walking or following a path, with no player within 12 squares, nothing physical going on (no bullet hit being tracked, no ragdoll, not falling, not burning, not grappled) run on the worker threads; everything else updates as in the stock game. Without it the worker threads crashed the game when zombies were shot. On by default." },
+            { key = "ragdollCorpseGuard", label = "Ragdolls: none for corpses (game bug fix)",
+              tip = "When a shot zombie's ragdoll settles and it turns into a corpse, the game builds a second, invisible ragdoll for the corpse in the same frame from the animation left over, and nothing ever owns it: it stays in the physics world, counts against the maximum number of ragdolls, and quitting while one is there crashes the game on the way out. With this on no ragdoll is made for a character that is already a corpse. On by default." },
+            { key = "ragdollQuitSweep", label = "Ragdolls: clear leftovers before quitting (game bug fix)",
+              tip = "Just before the physics world is destroyed on the way out of a game, any ragdoll still in it is removed first; the physics library destroys the world before its ragdolls, and a ragdoll left over then crashed the game at quit. A safety net behind the fix above. On by default." },
+            { key = "animalLosFast", label = "Animals: skip far-zombie sight checks",
+              tip = "An animal's line-of-sight update walks every zombie in range even when it is too far to change anything; those calls are skipped with the same bookkeeping applied afterwards (bit-identical numbers), and players are never skipped. Matters on farms and near hordes." },
+        },
+    },
+    {
+        title = "More game-thread work on the worker threads", clip = "horde",
+        entries = {
+            { key = "renderPrepParallel", label = "Character shadows and reflections: prepared on other cores",
+              tip = "Every character on screen asks the sun shadows how much sun reaches it (a walk through the buildings towards the sun) and the reflections whether water is near it. Both answers only read the world, so they are worked out on the worker threads while the game thread draws the ground; the characters then take them ready. Same picture." },
+            { key = "pplPackParallel", label = "Per-pixel lighting: light map built on other cores",
+              tip = "With per-pixel lighting, the light of every changed piece of the screen is packed on the worker threads, each piece into its own slot, instead of one after another on the game thread. Same light." },
+            { key = "pplTorchNearChunk", label = "Per-pixel lighting: torch test per chunk",
+              tip = "With per-pixel lighting, whether a torch reaches a square is first decided for the whole 8x8 chunk; only a chunk a torch can reach tests its squares. Same result." },
+            { key = "schedulerClassifyParallel", label = "Update schedule computed on other cores",
+              tip = "Every frame the game decides how often each zombie, animal and car is updated (distance, visibility, what it is doing); the worker threads compute it and the game thread files the results in the same order. Same schedule." },
+            { key = "zombieStatsFold", label = "Zombie travel statistics once per frame",
+              tip = "Every zombie added its walked distance to the statistics and re-checked the achievements, 2,000 times a frame in a horde. The same additions are summed in the same order and written once per frame. Same totals." },
+            { key = "visPolyAsync", label = "Vision cone shape: computed on its own thread",
+              tip = "While you walk, drive or turn, the shape of your vision cone (the walls and trees that cast its shadows) is recomputed every frame. It only depends on where you stand and look, so it is worked out on a thread of its own while the game thread draws the ground, and is ready when the cone is drawn. Same cone." },
+            { key = "aoContextParallel", label = "Shadows and ambient occlusion: bake data on other cores",
+              tip = "With ambient occlusion or sun shadows on, every chunk the game redraws also gathers which squares hold grass, trees, walls and roofs around it. Those reads are done for all the chunks of a frame at once on the worker threads, instead of one by one inside each redraw. Same shading." },
+            { key = "translucentOrderCache", label = "See-through objects: drawing order kept",
+              tip = "Objects drawn every frame (windows, doors, wind-blown plants, items) are put in drawing order level by level, every frame. That order only changes when the level changes, so it is kept and reused until then. Same order, checked against the recomputed one over a whole drive." },
+            { key = "losLightPrefetch", label = "Player sight: light read ahead on other cores",
+              tip = "The squares the player's sight check reads have their light refreshed on the worker threads first. Measured slower than reading them one by one (off)." },
+        },
+    },
+    {
         title = "Sprite buffers", clip = "drive",
         entries = {
             { key = "persistentVbo", label = "Persistently mapped sprite buffers",
@@ -707,14 +749,23 @@ local ENHANCEMENT_SECTIONS = {
               choices = { "25", "35", "45", "60", "75" }, note = { ["45"] = "default" },
               tip = "How much of the daylight a full shadow takes away on a clear day. Clouds, rain and fog lower it further." },
             { key = "sunShadowCharacters", label = "Sun shadows: characters",
-              tip = "Characters cast the soft shadow of their body (legs, torso, arms, head) onto the ground, walls and furniture around them, drawn every frame, and a character standing in a building's or a tree's shadow is shaded too. Only characters drawn with a model (the ones near enough to animate)." },
+              tip = "Characters cast the shadow of their body onto the ground, walls and furniture around them, drawn every frame, and a character standing in a building's or a tree's shadow is shaded too. Only characters drawn with a model (the ones near enough to animate); the far ones drawn as flat pictures cast a simple upright shape." },
+            { key = "sunShadowMeshes", label = "Sun shadows: the true shape of characters, animals and vehicles",
+              tip = "Each character, animal and vehicle is drawn once more, as the sun sees it, into a small shadow picture of its own, and its shadow takes that shape: arms, legs, hair, clothes, backpacks and weapons; an animal's legs, head and tail; a car's body and wheels. The pose is renewed about 15 times a second (the shadow follows the character's position every frame). Off: a simpler shape of rounded pieces." },
+            { key = "sunShadowAnimals", label = "Sun shadows: animals",
+              tip = "Farm and wild animals cast sun shadows too." },
             { key = "sunShadowVehicles", label = "Sun shadows: vehicles",
-              tip = "Cars and trucks outdoors cast a soft sun shadow of their body." },
+              tip = "Cars and trucks outdoors cast a sun shadow of their body." },
+            { key = "sunShadowTreeCards", label = "Sun shadows: the true shape of trees",
+              tip = "A tree casts the shadow of its own picture, trunk, branches and leaves, in one piece from its foot to its crown, turned towards the sun so it never thins to a line. Off: a soft oval for the crown." },
+            { key = "sunShadowStockFadePct", label = "Sun shadows: the game's round shadow under characters (fade, %)",
+              choices = { "0", "50", "85", "100" }, note = { ["85"] = "default" },
+              tip = "Where a character or a vehicle casts a real sun shadow, the game's own round shadow under its feet fades by this much (it was a second shadow beside the sun's). Overcast, at night and indoors it stays." },
             { key = "sunShadowTorches", label = "Shadows from torches and headlights",
               tip = "At night (and in dark places), characters caught in a torch beam or in headlights cast long soft shadows away from the light. The one holding the torch does not shadow their own beam." },
             { key = "sunShadowSoftnessPct", label = "Sun shadows: softness (%)",
-              choices = { "25", "50", "100", "200" }, note = { ["100"] = "default" },
-              tip = "How quickly a shadow's edge blurs with the distance from what casts it (the size of the sun's disk). 100 is a softened sun; 25 is close to real sunlight." },
+              choices = { "10", "25", "50", "100", "200" }, note = { ["25"] = "default" },
+              tip = "How quickly a shadow's edge blurs with the distance from what casts it (the size of the sun's disk). 25 is close to real sunlight: a tree's shadow keeps its branches and leaves, a character's its arms and legs; 100 and more blur every shadow into a soft shape; 10 is as sharp as the real sun." },
             { key = "moonShadows", label = "Moon shadows",
               tip = "At night the moon casts the same soft shadows when it is up: where it really is for the game's date and hour, as strong as its phase allows (a full moon high in a clear sky casts clear shadows, a thin crescent barely any, a new moon none), once the sky is dark. The game's own night brightness already follows the moon's phase." },
             { key = "moonShadowPct", label = "Moon shadows: strength (% of the sun's)",
@@ -743,6 +794,30 @@ local ENHANCEMENT_SECTIONS = {
               tip = "How strongly the water mirrors the scene. Real water seen from the game's camera angle reflects little (a few percent, more on the side of a wave); higher is more of a mirror." },
             { key = "reflectionPuddles", label = "Reflections: in puddles",
               tip = "Puddles mirror the scene too once the rain has made them big enough (the rain's rings blur them)." },
+        },
+    },
+    {
+        title = "God rays (light shafts through windows, doorways, trees and fog)", clip = "hdr",
+        entries = {
+            { key = "godRays", label = "God rays",
+              tip = "Sunlight (and moonlight) falls through windows and open doorways into rooms as shafts of light in the dust, with sunlit patches on the floor, tables and walls where it lands, cut exactly by the window frames; outdoors, in fog, rain and morning mist, the shadows of buildings and trees stretch through the haze; torches, headlights and lamps glow in the dust and fog around them. Walls, roofs, upper floors, curtains and barricades block the light; tree crowns let it through their gaps. Nothing is drawn where no light comes in: a clear day costs only the rooms with sunlit windows on screen (one draw), the haze pass runs only in fog, rain or mist. Windows and Linux (not on macOS, OpenGL 2.1)." },
+            { key = "godRaysStrengthPct", label = "God rays: brightness (%)",
+              choices = { "50", "75", "100", "150", "200" }, note = { ["100"] = "default" },
+              tip = "How bright the shafts of light and the sunlit patches are." },
+            { key = "godRaysDustPct", label = "God rays: dust in rooms (%)",
+              choices = { "0", "50", "100", "200" }, note = { ["100"] = "default", ["0"] = "patches only" },
+              tip = "How dusty the air in rooms is: the more dust, the brighter the shafts through the windows (0: only the sunlit patches)." },
+            { key = "godRaysPatchPct", label = "God rays: sunlit patches (%)",
+              choices = { "0", "50", "100", "150" }, note = { ["100"] = "default" },
+              tip = "How bright the sun lands on the floor, furniture and walls where a shaft reaches them (0: the shafts only)." },
+            { key = "godRaysHazePct", label = "God rays: haze outdoors (%)",
+              choices = { "0", "50", "100", "200" }, note = { ["100"] = "default", ["0"] = "off" },
+              tip = "How hazy the open air is: fog, rain and the mist of the hours after sunrise add to it, and the shadows of buildings and trees stretch through it as rays. A clear midday has almost none (and costs nothing)." },
+            { key = "godRaysLocal", label = "God rays: torches, headlights and lamps",
+              tip = "Torch beams, headlights, street lamps and fires glow in the dust of rooms and in fog and rain, their cones shaped by the light's reach and direction." },
+            { key = "godRaysLocalPct", label = "God rays: torch and lamp glow (%)",
+              choices = { "50", "100", "200" }, note = { ["100"] = "default" },
+              tip = "How strong the glow around torches, headlights and lamps is." },
         },
     },
     {
@@ -1049,6 +1124,7 @@ local PZOPT_NOTE_KEYS = {
     ["no shading on objects"] = "UI_pzopt_note_4d31cbf61f",
     ["no shading on trees, bushes and grass"] = "UI_pzopt_note_b0e2dca5da",
     ["still"] = "UI_pzopt_note_677c1bfa3a",
+    ["patches only"] = "UI_pzopt_note_582c8ca892",
     ["off (the game's own darkness)"] = "UI_pzopt_note_aebabf3d77",
     ["a dim moonlit floor"] = "UI_pzopt_note_aa9ee346cb",
     ["the fps line"] = "UI_pzopt_note_44",
@@ -1075,6 +1151,8 @@ local PZOPT_SECTION_KEYS = {
     ["Chunk textures: what bakes"] = "UI_pzopt_section_01",
     ["Chunk textures: bake budgets"] = "UI_pzopt_section_02",
     ["Cutaways, lighting and weather (game thread)"] = "UI_pzopt_section_03",
+    ["Entity updates on the worker threads"] = "UI_pzopt_section_a42ddf9886",
+    ["More game-thread work on the worker threads"] = "UI_pzopt_section_d56497f5fb",
     ["Sprite buffers"] = "UI_pzopt_section_05",
     ["Input latency (keyboard, mouse, controller)"] = "UI_pzopt_section_e2b5b023b5",
     ["Driving smoothness (the car's stutter and rubber banding)"] = "UI_pzopt_section_05fad019a4",
@@ -1095,6 +1173,7 @@ local PZOPT_SECTION_KEYS = {
     ["Ambient occlusion (soft shading in corners, along wall bases and under furniture)"] = "UI_pzopt_section_06b26a0de3",
     ["Sun, moon and cloud shadows (soft shadows of walls, trees, fences and furniture that follow the real sky)"] = "UI_pzopt_section_ce5912174d",
     ["Reflections (the scene mirrored in rivers, lakes and puddles)"] = "UI_pzopt_section_dfcb6917f3",
+    ["God rays (light shafts through windows, doorways, trees and fog)"] = "UI_pzopt_section_dea8523369",
     ["Darkness, remembered places and colour grading"] = "UI_pzopt_section_2822ae7ee0",
     ["Per-pixel lighting (smooth light, torch and headlight beams drawn per pixel)"] = "UI_pzopt_section_123e163628",
     ["Performance overlay (F9 or the \"Toggle performance overlay\" key binding; L3 + R3 on a controller)"] = "UI_pzopt_section_8f8fc9b06c",
@@ -1274,6 +1353,7 @@ local KEY_CLIP = {
     lightSwitchCheckFrames = "horde", soundZoneCache = "horde", worldSoundFast = "horde", gridStackInterval = "horde",
     playerLosFast = "player", zombieSpotFast = "player", charDrawPrep = "horde", zombieAtlasFast = "horde", charDrawThreads = "horde",
     actionSnapshotFilter = "zgt", emitterParamSkip = "zgt", separateFast = "zgt", separateParallel = "zgt", sleepCheckMemo = "zgt",
+    renderPrepParallel = "horde", pplPackParallel = "torch", pplTorchNearChunk = "torch", schedulerClassifyParallel = "zgt", zombieStatsFold = "zgt", losLightPrefetch = "player", entityUpdateSafeStates = "horde", ragdollCorpseGuard = "horde", ragdollQuitSweep = "horde", visPolyAsync = "player", aoContextParallel = "horde", translucentOrderCache = "drive",
     stateParamMemo = "zgt", actionGroupCache = "zgt", profilerThreadMemo = "zgt", zombieSimLodTiles = "zgt", zombieSimLodSteps = "zgt",
     zombieCheckSpread = "zgt", chunkGridWidth = "grid", chunkGridFollowView = "grid",
     zombieLodDynamic = "horde", zombieLodMin3d = "horde", zombieLodMinBlend = "horde", zombieLodUncappedFps = "horde",
@@ -1357,6 +1437,18 @@ local EFFECTS = {
     lightingStrongDelta = { cpu = 1 },
     lightingStrongBudget = { cpu = -1, gpu = -2 },
     lightingStrongFrameMs = { gpu = -1 },
+    entityUpdateParallel = { cpu = -2, cores = 1 },
+    renderPrepParallel = { cpu = -1, cores = 1 },
+    pplPackParallel = { cpu = -1, cores = 1 },
+    pplTorchNearChunk = { cpu = -1 },
+    schedulerClassifyParallel = { cpu = -1 },
+    zombieStatsFold = { cpu = -1 },
+    visPolyAsync = { cpu = -1, cores = 1 },
+    aoContextParallel = { cpu = -1, cores = 1 },
+    translucentOrderCache = { cpu = -1 },
+    entityUpdatePipeline = { cores = 1 },
+    emitterDefer = {},
+    animalLosFast = { cpu = -1 },
     animBonesParallel = { cpu = -1, cores = 1 },
     animBonesThreads = { cores = 1 },
     frameThreads = { cores = 1 },
@@ -1426,6 +1518,8 @@ local EFFECTS = {
     sunShadows = { gpu = 1, vram = 1 },
     cloudShadows = { gpu = 1 },
     reflections = { gpu = 1, vram = 1 },
+    godRays = { gpu = 1, vram = 1 },
+    godRaysLocal = { gpu = 1 },
     darknessFloorPct = {},
     memoryTint = {},
     colorGrading = { gpu = -1 },
@@ -2337,6 +2431,7 @@ local function addSearchRows(self, S, splitpoint, y, width)
         .. "under it by name. Effect on a resource: every setting that lowers that part's load first, "
         .. "biggest change first (the bars in the preview), then the ones that raise it, then the rest. A search "
         .. "always lists the best matches first."
+    sort.tooltip = pzoptTr("UI_pzopt_text_optimizations_options_88155561c8", sort.tooltip)
     self.mainPanel:addChild(sort)
     self.mainPanel:insertNewLineOfButtons(sort)
     self.addY = self.addY + BUTTON_HGT + spacing
@@ -2354,6 +2449,7 @@ local function addSearchRows(self, S, splitpoint, y, width)
     clips.tooltip = "Plays a short clip of the stock game and one with the setting on, side by side, above the "
         .. "description of the setting under the mouse. Off saves the memory the clips take (up to ~100 MB of video "
         .. "memory while this screen is open). Applies at once, for every tab, and is remembered."
+    clips.tooltip = pzoptTr("UI_pzopt_text_optimizations_options_e00d40af6b", clips.tooltip)
     -- another tab's tick box may have changed it
     clips.prerender = function(o)
         if o:isSelected(1) ~= clipsOn() then o:setSelected(1, clipsOn()) end
@@ -2793,6 +2889,138 @@ local function applyProfile(self, profile)
     end
 end
 
+-- "Uninstall PZ Optimization": pzopt.Uninstall puts the launcher settings back now and starts a helper that deletes the
+-- installed files once the game has quit (the classes cannot go while it runs), then the game quits the stock way.
+-- Main menu only: in a world the quit would skip the save.
+local UNINSTALL_TITLE = pzoptTr("UI_pzopt_text_pzopt_optimizations_options_81299db1fa", "Uninstall PZ Optimization...")
+local UNINSTALL_TIP = "Closes the game, then removes every file the installer or the updater put into the game folder and puts "
+    .. "back the launcher settings it changed: the next launch is the stock game. projectzomboid.jar was never modified. "
+    .. "Your settings under Zomboid/pzopt/ stay for a reinstall. Do this before you unsubscribe from the Workshop item."
+UNINSTALL_TIP = pzoptTr("UI_pzopt_text_optimizations_options_3e9b2dd012", UNINSTALL_TIP)
+-- ISModalDialog draws plain text: lines broken by hand ("\n"), no rich-text tags
+local UNINSTALL_CONFIRM = "Uninstall PZ Optimization?\n\n"
+    .. "The game closes now. Once it has, every file the installer\n"
+    .. "or the updater put into the game folder is removed and the\n"
+    .. "launcher settings it changed are put back: the next launch\n"
+    .. "is the stock game. Your settings in Zomboid/pzopt/ stay.\n\n"
+    .. "Afterwards you can unsubscribe from the Workshop item."
+
+UNINSTALL_CONFIRM = pzoptTr("UI_pzopt_text_optimizations_options_e40bb7ea65", UNINSTALL_CONFIRM)
+
+local function showUninstallResult(text)
+    local modal = ISModalDialog:new(getCore():getScreenWidth() / 2 - 200, getCore():getScreenHeight() / 2 - 60, 400, 120,
+        text, false, nil, nil)
+    modal:initialise()
+    modal:setCapture(true)
+    modal:setAlwaysOnTop(true)
+    modal:addToUIManager()
+end
+
+local function onUninstallConfirm(target, button)
+    if button.internal ~= "YES" then return end
+    local ok, started = pcall(function() return perf():pzoptUninstall() end)
+    if ok and started then
+        MainScreen.instance:quitToDesktop()
+        return
+    end
+    local msg = ""
+    pcall(function() msg = perf():getPzoptUninstallMessage() end)
+    showUninstallResult(pzoptTr("UI_pzopt_text_pzopt_optimizations_options_69dcfe1c8a", "Nothing was removed:\n") .. tostring(msg):gsub(": ", ":\n"))
+end
+
+local function addUninstallButton(self, splitpoint, y)
+    local b = self:addButton(splitpoint, y, UNINSTALL_TITLE)
+    b.target = self
+    b.onclick = function()
+        if MainScreen.instance and MainScreen.instance.inGame then return end
+        local w, h = 420, 200
+        local modal = ISModalDialog:new(getCore():getScreenWidth() / 2 - w / 2, getCore():getScreenHeight() / 2 - h / 2, w, h,
+            UNINSTALL_CONFIRM, true, self, onUninstallConfirm)
+        modal:initialise()
+        modal:setCapture(true)
+        modal:setAlwaysOnTop(true)
+        modal:addToUIManager()
+        self.pzoptUninstallModal = modal
+        local joypadData = JoypadState.getMainMenuJoypad()
+        if joypadData then
+            modal.prevFocus = joypadData.focus
+            joypadData.focus = modal
+            updateJoypadFocus(joypadData)
+        end
+    end
+    self.pzoptUninstallButton = b
+    local why = ""
+    pcall(function() why = perf():getPzoptUninstallUnavailable() end)
+    if MainScreen.instance and MainScreen.instance.inGame then
+        why = pzoptTr("UI_pzopt_text_optimizations_options_94e70f6cd1", "go back to the main menu first (quitting from a world would skip the save)")
+    end
+    if why ~= "" then
+        b:setEnable(false)
+        b.tooltip = UNINSTALL_TIP .. pzoptTr("UI_pzopt_text_optimizations_options_580b427a18", " Not available now: ") .. why .. "."
+    else
+        b.tooltip = UNINSTALL_TIP
+    end
+    return b
+end
+
+-- devUninstallDrive (dev rig, Config key; harness/uninstall-e2e.sh): once the main menu is up, the real controls in
+-- order: Options, the Optimizations tab, Uninstall PZ Optimization..., Yes. Each step is logged ("[pzopt-e2e] ...") and
+-- held for a few seconds so the script can take a screenshot; Yes starts pzopt.Uninstall and quits the game.
+local uninstallDrive = { step = 0, at = 0 }
+local function uninstallDriveTick()
+    local d = uninstallDrive
+    if d.step < 0 then return end
+    if d.step == 0 then
+        local ok, v = pcall(function() return getPerformance():getPzoptOption("devUninstallDrive") end)
+        if not ok or v ~= "true" then d.step = -1; return end
+        d.step, d.at = 1, getTimestampMs() + 4000
+        return
+    end
+    if getTimestampMs() < d.at then return end
+    local ms = MainScreen.instance
+    if not ms or ms.inGame then return end
+    local mo = ms.mainOptions
+    if d.step == 1 then
+        if not ms.optionsOption then return end
+        MainScreen.onMenuItemMouseDownMainMenu(ms.optionsOption, 0, 0)
+        d.step, d.at = 2, getTimestampMs() + 1500
+    elseif d.step == 2 then
+        if not mo or not mo.tabs then return end
+        mo.tabs:activateView(TAB)
+        d.step, d.at = 3, getTimestampMs() + 1500
+    elseif d.step == 3 then
+        local b = mo and mo.pzoptUninstallButton
+        if not b then
+            print("[pzopt-e2e] uninstall drive: no Uninstall button on the " .. TAB .. " tab")
+            d.step = -1
+            return
+        end
+        print("[pzopt-e2e] tab shown: button \"" .. tostring(b.title) .. "\" enabled=" .. tostring(b.enable) .. " visible="
+            .. tostring(b:isReallyVisible()) .. " tooltip=" .. tostring(b.tooltip))
+        getCore():TakeFullScreenshot("pzopt-e2e-A-tab.png")
+        d.step, d.at = 4, getTimestampMs() + 3000
+    elseif d.step == 4 then
+        mo.pzoptUninstallButton.onclick()
+        d.step, d.at = 5, getTimestampMs() + 1500
+    elseif d.step == 5 then
+        local m = mo.pzoptUninstallModal
+        if not m then
+            print("[pzopt-e2e] uninstall drive: the button opened no dialog")
+            d.step = -1
+            return
+        end
+        print("[pzopt-e2e] dialog shown: " .. string.gsub(tostring(m.text), "\n", " | "))
+        getCore():TakeFullScreenshot("pzopt-e2e-A-dialog.png")
+        d.step, d.at = 6, getTimestampMs() + 3000
+    elseif d.step == 6 then
+        local m = mo.pzoptUninstallModal
+        d.step = -1
+        print("[pzopt-e2e] pressing Yes at " .. getTimestampMs())
+        m:onClick(m.yes)
+    end
+end
+Events.OnFETick.Add(function() pcall(uninstallDriveTick) end)
+
 local function addAllButtons(self, splitpoint, y)
     local on = self:addButton(splitpoint, y, pzoptTr("UI_pzopt_text_pzopt_optimizations_options_740c74e773", "Enable all (recommended defaults)"))
     on.tooltip = pzoptTr("UI_pzopt_text_optimizations_options_15973b21f9", "Turns the master switch on and puts every setting below back to the build's default on this machine. ") .. RESTART_NOTE
@@ -2810,6 +3038,7 @@ local function addAllButtons(self, splitpoint, y)
         b.onclick = function(target) applyProfile(target, profile) end
         table.insert(profileButtons, b)
     end
+    addUninstallButton(self, splitpoint, y)
     if self.pzoptMaster and not self.pzoptMaster.control.enable then
         on:setEnable(false)
         off:setEnable(false)
@@ -2852,6 +3081,7 @@ local DEPS_TITLES = {
 local DEPS_TIP = "Downloads the two native files NVIDIA DLSS needs into the game's natives folder (the pzopt shim and NVIDIA's "
     .. "DLSS library; releases do not carry them) and checks each one's checksum. Linux or Windows with an NVIDIA RTX card; "
     .. "FSR 1.0 needs no files. Then pick \"Upscaler\": dlss and restart the game."
+DEPS_TIP = pzoptTr("UI_pzopt_text_optimizations_options_19e7a3ecfe", DEPS_TIP)
 
 local function addUpscalerDepsButton(self, splitpoint, y)
     local b = self:addButton(splitpoint, y, DEPS_TITLES.checking)
@@ -2914,7 +3144,7 @@ local function layout(self, comboWidth)
     end
     labelW = labelW + 8
     local controlW = comboWidth
-    for _, title in ipairs({ pzoptTr("UI_pzopt_text_pzopt_optimizations_options_740c74e773", "Enable all (recommended defaults)"), pzoptTr("UI_pzopt_text_pzopt_optimizations_options_6d33435b62", "Disable all (stock game)"), PAGE_RESET }) do
+    for _, title in ipairs({ pzoptTr("UI_pzopt_text_pzopt_optimizations_options_740c74e773", "Enable all (recommended defaults)"), pzoptTr("UI_pzopt_text_pzopt_optimizations_options_6d33435b62", "Disable all (stock game)"), PAGE_RESET, UNINSTALL_TITLE }) do
         controlW = math.max(controlW, getTextManager():MeasureStringX(UIFont.Small, title) + 24)
     end
     for _, title in pairs(DEPS_TITLES) do
