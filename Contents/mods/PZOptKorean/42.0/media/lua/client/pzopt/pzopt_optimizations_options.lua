@@ -27,7 +27,9 @@ end
 --  shows is its section's `clip`, overridden per key in KEY_CLIP.
 --  Upscaling, HDR output and ambient occlusion (ENHANCEMENT_SECTIONS) have their own "Enhancements" tab right after
 --  it, and the performance overlay and its game-thread profiler (PROFILER_SECTIONS) a "Profiler" tab after that, both
---  built the same way (buildSettingsPage) without the master switch and the profile buttons.
+--  built the same way (buildSettingsPage) without the profile buttons; each has its own master switch at the top
+--  (2026-09-28: `enhancementsEnabled`, `profilerEnabled`; off, Java reads the tab's feature switches as off and keeps
+--  the choices saved; both live).
 -- Installed by scripts/pzopt.sh into <game dir>/media/lua/client/pzopt/ (loose game-dir Lua is
 -- loaded like any other, no mod to enable).
 
@@ -40,6 +42,14 @@ local LIVE_NOTE = pzoptTr("UI_pzopt_text_pzopt_optimizations_options_734c2e1f76"
 -- The master switch, drawn before the sections with the two buttons.
 local MASTER = { key = "enabled", label = "Optimizations enabled (master switch)",
   tip = "Off = the game runs stock: every override takes its original code path and the settings below are ignored. On = the settings below apply. The Profiler tab is not affected: the performance overlay works either way." }
+-- The Enhancements and Profiler tabs' master switches (2026-09-28): off, Java reads every feature of the tab as off
+-- (Config's GATED list) while the choices below stay saved for when it is on again. Both apply at once; the features
+-- that pick their shaders or window at start-up (NEXT_LAUNCH_ONLY) follow on the next launch.
+local ENHANCEMENTS_MASTER = { key = "enhancementsEnabled", label = "Enhancements enabled (master switch)", live = true,
+  restartKeys = { "hdr", "hdrAuto", "pixelLight", "reflections" },
+  tip = "Off = the picture is the stock game's: upscaling, sprite filtering, HDR output, ambient occlusion, sun shadows, reflections, the darkness floor, remembered places, colour grading, per-pixel lighting and god rays are all off, whatever the settings below say (they are kept for when you switch it on again). On = the settings below apply. HDR output, per-pixel lighting and reflections switch on the next launch." }
+local PROFILER_MASTER = { key = "profilerEnabled", label = "Profiler enabled (master switch)", live = true,
+  tip = "Off = no performance overlay, no measuring and no frame log: the overlay's samplers never start and the toggle key only says the profiler is off, whatever the settings below say (they are kept for when you switch it on again). On = the settings below apply." }
 
 -- Colour names pzopt.Overlay.color knows (a RRGGBB hex typed into options.ini also works).
 local FPS_COLOURS = { "blue", "green", "yellow", "red", "white", "cyan", "lime", "orange", "magenta", "purple" }
@@ -311,6 +321,8 @@ local SECTIONS = {
               tip = "When a shot zombie's ragdoll settles and it turns into a corpse, the game builds a second, invisible ragdoll for the corpse in the same frame from the animation left over, and nothing ever owns it: it stays in the physics world, counts against the maximum number of ragdolls, and quitting while one is there crashes the game on the way out. With this on no ragdoll is made for a character that is already a corpse. On by default." },
             { key = "ragdollQuitSweep", label = "Ragdolls: clear leftovers before quitting (game bug fix)",
               tip = "Just before the physics world is destroyed on the way out of a game, any ragdoll still in it is removed first; the physics library destroys the world before its ragdolls, and a ragdoll left over then crashed the game at quit. A safety net behind the fix above. On by default." },
+            { key = "physicsDefer", label = "Entity updates: physics calls after the batch",
+              tip = "With entity updates on other cores, the two physics engine calls a zombie's update can make queue instead of running on the worker, and the game thread makes them right after the batch in the stock order - same frame, before anything renders. They are the bullet hitbox of a zombie you have a gun aimed at, and the contact test between a ragdolling zombie and a car. The physics engine is not safe to call from several threads at once, and a crash inside it cannot be caught and turned off the way a Java error can, so leave this on: without it, shooting into a horde with entity updates on other cores ends the game process. Only active while entity updates on other cores is on." },
             { key = "animalLosFast", label = "Animals: skip far-zombie sight checks",
               tip = "An animal's line-of-sight update walks every zombie in range even when it is too far to change anything; those calls are skipped with the same bookkeeping applied afterwards (bit-identical numbers), and players are never skipped. Matters on farms and near hordes." },
         },
@@ -821,6 +833,19 @@ local ENHANCEMENT_SECTIONS = {
         },
     },
     {
+        title = "Foliage sway (grass, bushes and trees in the wind)", clip = "hdr",
+        entries = {
+            { key = "foliageSway", label = "Foliage sway",
+              tip = "Grass, bushes and trees bend and sway in the wind: they lean with it, gusts roll across fields and tree crowns, each plant swings at its own pace (grass quick, trees slow) and leaves flutter. The plants stay in the game's cached chunk pictures; the pass that puts those pictures on screen every frame moves each plant's pixels by the wind, so nothing extra is drawn. The game's own \"Wind sprite effects\" option (off by default) does this by drawing every plant every frame instead. Windows and Linux (not on macOS, OpenGL 2.1)." },
+            { key = "foliageSwayPct", label = "Foliage sway: strength (%)",
+              choices = { "50", "100", "150", "200" }, note = { ["100"] = "default" },
+              tip = "How far the plants bend in the wind." },
+            { key = "foliageSwayTaps", label = "Foliage sway: quality",
+              choices = { "1", "2", "3", "4" }, note = { ["1"] = "default", ["2"] = "plant edges move too" },
+              tip = "How the moving plants cover what is behind them: 1 moves each plant's pixels inside its own outline only (the cheapest); 2 to 4 also let the plant's edge move out over the ground behind it, looking 1 to 3 steps upwind." },
+        },
+    },
+    {
         title = "Darkness, remembered places and colour grading", clip = "darkness",
         entries = {
             { key = "darknessFloorPct", label = "Darkness floor (% of full light)",
@@ -869,6 +894,8 @@ local ENHANCEMENT_SECTIONS = {
               tip = "How bright the glints on wet ground are." },
             { key = "pplShadows", label = "Per-pixel lighting: torch shadows (experimental)",
               tip = "Fence posts, furniture and walls cast shadows into your torch's beam (computed from the picture's depth at half resolution, one frame late). Experimental." },
+            { key = "pplTorchFeetGlow", label = "Per-pixel lighting: torch glow at your feet",
+              tip = "A torch in your hands also lights a small circle round your feet, behind and beside you. Off: only the beam in front of you is lit. Applies at once." },
         },
     },
 }
@@ -1146,6 +1173,7 @@ local PZOPT_NOTE_KEYS = {
     ["column beside the statistics, 900 px"] = "UI_pzopt_note_56",
     ["column beside the statistics, 1400 px"] = "UI_pzopt_note_57",
     ["under the frame graph, panel width"] = "UI_pzopt_note_58",
+    ["plant edges move too"] = "UI_pzopt_note_15c0d3e6a0",
 }
 local PZOPT_SECTION_KEYS = {
     ["Chunk textures: what bakes"] = "UI_pzopt_section_01",
@@ -1174,6 +1202,7 @@ local PZOPT_SECTION_KEYS = {
     ["Sun, moon and cloud shadows (soft shadows of walls, trees, fences and furniture that follow the real sky)"] = "UI_pzopt_section_ce5912174d",
     ["Reflections (the scene mirrored in rivers, lakes and puddles)"] = "UI_pzopt_section_dfcb6917f3",
     ["God rays (light shafts through windows, doorways, trees and fog)"] = "UI_pzopt_section_dea8523369",
+    ["Foliage sway (grass, bushes and trees in the wind)"] = "UI_pzopt_section_7cafa6e5cf",
     ["Darkness, remembered places and colour grading"] = "UI_pzopt_section_2822ae7ee0",
     ["Per-pixel lighting (smooth light, torch and headlight beams drawn per pixel)"] = "UI_pzopt_section_123e163628",
     ["Performance overlay (F9 or the \"Toggle performance overlay\" key binding; L3 + R3 on a controller)"] = "UI_pzopt_section_8f8fc9b06c",
@@ -1197,6 +1226,10 @@ local function pzoptLocalizeSections(sections)
 end
 MASTER.label = pzoptTr("UI_pzopt_label_enabled", MASTER.label)
 MASTER.tip = pzoptTr("UI_pzopt_tip_enabled", MASTER.tip)
+ENHANCEMENTS_MASTER.label = pzoptTr("UI_pzopt_label_enhancementsEnabled", ENHANCEMENTS_MASTER.label)
+ENHANCEMENTS_MASTER.tip = pzoptTr("UI_pzopt_tip_enhancementsEnabled", ENHANCEMENTS_MASTER.tip)
+PROFILER_MASTER.label = pzoptTr("UI_pzopt_label_profilerEnabled", PROFILER_MASTER.label)
+PROFILER_MASTER.tip = pzoptTr("UI_pzopt_tip_profilerEnabled", PROFILER_MASTER.tip)
 pzoptLocalizeSections(SECTIONS)
 pzoptLocalizeSections(ENHANCEMENT_SECTIONS)
 pzoptLocalizeSections(PROFILER_SECTIONS)
@@ -1235,6 +1268,20 @@ local function afterStore(option, entry, value)
     if not entry.live then
         option:restartRequired(perf():getPzoptOption(entry.key), value)
     end
+end
+
+-- A tab master switch's start-up features (entry.restartKeys: they pick the window or patch shaders when the game
+-- starts) as the next launch will read them, so switching the master asks for a restart only when one of them moves.
+local function startupSignature(master)
+    local p = perf()
+    local off = nextValue(master) == "false"
+    local t = {}
+    for _, key in ipairs(master.restartKeys) do
+        local v = nextValue({ key = key })
+        if off and p:getPzoptOptionPinnedBy(key) == "" then v = "false" end
+        table.insert(t, key .. "=" .. v)
+    end
+    return table.concat(t, ",")
 end
 
 local function tooltipFor(entry, pinnedBy)
@@ -1347,7 +1394,7 @@ local KEY_CLIP = {
     fogPass = "fog", fogScalePct = "fog", fogMaskFrames = "fog",
     fsrSharpnessPct = "fsrzoom", dlssWaterCurrent = "dlss", dlssWaterHistoryPct = "dlss", dlssPreset = "dlss", dlssOutputPct = "dlss", dlssOutputFilter = "dlsszoom", dlssSharpen = "dlsszoom",
     hdrSunPct = "hdrday", hdrGlintPct = "hdrday",
-    pixelLight = "torch", pplAnalytic = "torch", pplNormals = "torch", pplWrapPct = "torch", pplShadows = "torch", pplSmooth = "torch", pplPointLights = "torch", pplWetSpecular = "storm", pplSpecPct = "storm",
+    pixelLight = "torch", pplAnalytic = "torch", pplNormals = "torch", pplWrapPct = "torch", pplShadows = "torch", pplTorchFeetGlow = "torch", pplSmooth = "torch", pplPointLights = "torch", pplWetSpecular = "storm", pplSpecPct = "storm",
     lightingStrongDelta = "torch", lightingStrongBudget = "horde", lightingStrongFrameMs = "horde", lightingFlush = "torch", lightingBudget = "torch",
     audioLimiter = "horde", audioLimiterCeilingDb = "horde", audioLimiterStereoFold = "horde", soundTickHz = "horde", emitterIdleSkip = "horde", worldSoundCleanupFast = "horde", hearingHoist = "horde",
     lightSwitchCheckFrames = "horde", soundZoneCache = "horde", worldSoundFast = "horde", gridStackInterval = "horde",
@@ -1448,6 +1495,7 @@ local EFFECTS = {
     translucentOrderCache = { cpu = -1 },
     entityUpdatePipeline = { cores = 1 },
     emitterDefer = {},
+    physicsDefer = {},
     animalLosFast = { cpu = -1 },
     animBonesParallel = { cpu = -1, cores = 1 },
     animBonesThreads = { cores = 1 },
@@ -1520,6 +1568,7 @@ local EFFECTS = {
     reflections = { gpu = 1, vram = 1 },
     godRays = { gpu = 1, vram = 1 },
     godRaysLocal = { gpu = 1 },
+    foliageSway = { gpu = 1, vram = 1 },
     darknessFloorPct = {},
     memoryTint = {},
     colorGrading = { gpu = -1 },
@@ -1528,6 +1577,7 @@ local EFFECTS = {
     pixelLight = { cpu = -1, gpu = 1, vram = 1 },
     pplPointLights = { gpu = 1 },
     pplShadows = { gpu = 2 },
+    pplTorchFeetGlow = {},
     aoScalePct = { gpu = 1, vram = 1 },
     vrr = { gpu = -1, cpu = -1 },
     vrrCap = { gpu = -1, cpu = -1 },
@@ -2498,8 +2548,12 @@ local function addBoolOption(self, entry, splitpoint, y, BUTTON_HGT)
     function option.apply(self)
         if pinnedBy ~= "" then return end
         local value = tostring(self.control:isSelected(1))
+        local before = entry.restartKeys and startupSignature(entry)
         store(entry, value)
         afterStore(self, entry, value)
+        if before then
+            self:restartRequired(before, startupSignature(entry))
+        end
     end
     -- the "Enable all" button puts the control back to the build's default
     function option.pzoptReset(self)
@@ -2865,7 +2919,13 @@ local function applyProfile(self, profile)
         option:invokeOnChangeEvent()
     end
     -- the upscaler keys live on the Enhancements tab: build it if it was never shown, then set them the same way
+    -- (a profile that picks an upscaler also turns that tab's master switch on)
     ensurePageBuilt(self, ENHANCEMENTS_TAB)
+    local enhancements = self.pzoptEnhancementMaster
+    if profile.values.upscaler and enhancements and enhancements.control.enable then
+        enhancements.control:setSelected(1, true)
+        enhancements:invokeOnChangeEvent()
+    end
     for _, option in ipairs(self.pzoptEnhancementOptions or {}) do
         if option.pzoptProfile then
             option:pzoptSet(profile.values[option.pzoptKey])
@@ -3052,13 +3112,19 @@ local function addAllButtons(self, splitpoint, y)
 end
 
 -- The Enhancements and Profiler tabs' reset button: that tab's settings back to the build's defaults (the
--- Optimizations tab's Enable all leaves them alone). `options` names the MainOptions field holding the page's options.
+-- Optimizations tab's Enable all leaves them alone). `options` names the MainOptions field holding the page's options,
+-- `masterField` the one holding its master switch (back on as well).
 local PAGE_RESET = pzoptTr("UI_pzopt_text_pzopt_optimizations_options_ddefe47d69", "Reset to defaults")
-local function addResetButton(self, splitpoint, y, options, note)
+local function addResetButton(self, splitpoint, y, options, note, masterField)
     local b = self:addButton(splitpoint, y, PAGE_RESET)
-    b.tooltip = pzoptTr("UI_pzopt_text_pzopt_optimizations_options_09e5848335", "Puts every setting on this tab back to the build's default. ") .. note
+    b.tooltip = pzoptTr("UI_pzopt_text_pzopt_optimizations_options_654d15ec50", "Puts every setting on this tab back to the build's default, the master switch on. ") .. note
     b.target = self
     b.onclick = function(target)
+        local master = target[masterField]
+        if master then
+            master:pzoptReset()
+            master:invokeOnChangeEvent()
+        end
         for _, option in ipairs(target[options] or {}) do
             option:pzoptReset()
             option:invokeOnChangeEvent()
@@ -3067,7 +3133,7 @@ local function addResetButton(self, splitpoint, y, options, note)
     return b
 end
 local function addProfilerButtons(self, splitpoint, y)
-    addResetButton(self, splitpoint, y, "pzoptProfilerOptions", LIVE_NOTE)
+    addResetButton(self, splitpoint, y, "pzoptProfilerOptions", LIVE_NOTE, "pzoptProfilerMaster")
 end
 
 -- "Install DLSS files": the natives DLSS needs that a release does not carry (pzopt.UpscalerDeps, Linux x86-64 with
@@ -3134,7 +3200,10 @@ end
 local function layout(self, comboWidth)
     local W = self:getWidth()
     local gap, margin, sbar = 40, 16, 13
-    local labelW = getTextManager():MeasureStringX(UIFont.Small, MASTER.label)
+    local labelW = 0
+    for _, master in ipairs({ MASTER, ENHANCEMENTS_MASTER, PROFILER_MASTER }) do
+        labelW = math.max(labelW, getTextManager():MeasureStringX(UIFont.Small, master.label))
+    end
     for _, sections in ipairs({ SECTIONS, ENHANCEMENT_SECTIONS, PROFILER_SECTIONS }) do
         for _, section in ipairs(sections) do
             for _, entry in ipairs(section.entries) do
@@ -3167,7 +3236,7 @@ end
 -- `panel` / `options` / `search` / `preview` name the MainOptions fields that hold the page's parts.
 local PAGES = {
     {
-        tab = TAB, sections = SECTIONS, master = MASTER, buttons = addAllButtons,
+        tab = TAB, sections = SECTIONS, master = MASTER, masterField = "pzoptMaster", masterClip = "drive", buttons = addAllButtons,
         panel = "pzoptPanel", options = "pzoptOptions", search = "pzoptSearch", preview = "pzoptPreview",
         footer = pzoptTr("UI_pzopt_text_pzopt_optimizations_options_24078b127f", "Changes take effect on the next launch. File: Zomboid/pzopt/options.ini"),
         headline = function(p)
@@ -3176,8 +3245,9 @@ local PAGES = {
     },
     {
         tab = ENHANCEMENTS_TAB, sections = ENHANCEMENT_SECTIONS,
+        master = ENHANCEMENTS_MASTER, masterField = "pzoptEnhancementMaster", masterClip = "upscale",
         buttons = function(o, splitpoint, y)
-            addResetButton(o, splitpoint, y, "pzoptEnhancementOptions", pzoptTr("UI_pzopt_text_pzopt_optimizations_options_a86d6f3a28", "Applies as soon as you press Apply; the two HDR output switches on the next launch."))
+            addResetButton(o, splitpoint, y, "pzoptEnhancementOptions", pzoptTr("UI_pzopt_text_pzopt_optimizations_options_ab8fcd3dca", "Applies as soon as you press Apply; HDR output, per-pixel lighting and reflections on the next launch."), "pzoptEnhancementMaster")
             addUpscalerDepsButton(o, splitpoint, y)
         end,
         panel = "pzoptEnhancementPanel", options = "pzoptEnhancementOptions", search = "pzoptEnhancementSearch",
@@ -3191,6 +3261,7 @@ local PAGES = {
     },
     {
         tab = PROFILER_TAB, sections = PROFILER_SECTIONS, buttons = addProfilerButtons,
+        master = PROFILER_MASTER, masterField = "pzoptProfilerMaster", masterClip = "overlay",
         panel = "pzoptProfilerPanel", options = "pzoptProfilerOptions", search = "pzoptProfilerSearch",
         preview = "pzoptProfilerPreview",
         footer = pzoptTr("UI_pzopt_text_pzopt_optimizations_options_504d83cb7f", "Changes apply as soon as you press Apply, no restart needed. File: Zomboid/pzopt/options.ini"),
@@ -3236,10 +3307,10 @@ local function buildSettingsPage(self, page)
     end
     addSectionLine(self, y, page.headline(p), L.x0, L.lineW)
     if page.master then
-        self.pzoptMaster = nil
+        self[page.masterField] = nil
         if p:isPzoptOptionKnown(page.master.key) then
-            self.pzoptMaster = addBoolOption(self, page.master, splitpoint, y, BUTTON_HGT)
-            addRow(page.master, self.pzoptMaster, "drive")
+            self[page.masterField] = addBoolOption(self, page.master, splitpoint, y, BUTTON_HGT)
+            addRow(page.master, self[page.masterField], page.masterClip)
             if p:getPzoptOptionPinnedBy(page.master.key) ~= "" then pinned = pinned + 1 end
         end
     end
