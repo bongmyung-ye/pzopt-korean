@@ -419,6 +419,33 @@ local SECTIONS = {
         },
     },
     {
+        title = "Menus, inventory and map (UI)", clip = "spin",
+        entries = {
+            { key = "uiRetained", label = "UI: redraw only what changed, the moment you act",
+              tip = "The game redrew every open window's Lua 60 times a second into the UI picture, although almost all of them drew exactly the same as the frame before, and showed a click or key only at the next of those redraws. With this on each window's drawing is kept and reused while nothing can have changed it (no click, key, wheel or mouse over it, no change to its data, the inventory not marked for refresh); anything you do is drawn in the same frame. Measured at 240 fps: the UI's share of the frame 4 -> 0.9 % with the HUD, 9.8 -> 1.4 % with the inventory open, 16.6 -> 2.2 % with the crafting window, 40 -> 4 % with the map." },
+            { key = "uiRetainedChildren", label = "UI: reuse unchanged buttons and panels inside windows",
+              tip = "The same for the buttons, lists and panels inside a window that is redrawn (the map's symbol buttons, the inventory's container buttons): only the part under the mouse or with new data is drawn again. Map 6.4 -> 4.1 % of the frame." },
+            { key = "uiTickStagger", label = "UI: window updates spread over frames",
+              tip = "Every window's Lua update ran in the same frame ten times a second (~0.5 ms with the inventory, ~1.3 ms with the crafting window open). Each window now keeps its own tenth of a second, spread over the frames: the same updates, no periodic spike." },
+            { key = "uiLuaFast", label = "UI: inventory window shortcuts",
+              tip = "A hidden inventory window no longer rebuilds its container buttons row ten times a second (it does when shown), and the item list skips a second pass over every item when nothing is being dragged. Same result on screen; not used when a mod replaced those functions." },
+            { key = "hotsaveWarmup", label = "Transfers: first save warmed up while loading",
+              tip = "Dropping or looting items makes the game save the map's building, room and zone records on the next save pass, on the game thread. The first time in a session that code ran cold: a 17 ms stutter a moment after the first transfer. It is now run three times into a scratch buffer on the loading screen (36 ms of load), so that save takes ~6 ms." },
+            { key = "mapStreetMemo", label = "Map: street names laid out once per view",
+              tip = "The world map measured every street, translated every street name for every letter and sorted the visible streets with a list search in every frame. Lengths and names are kept per view and language. Map UI 6.4 -> 3.8 ms a redraw." },
+            { key = "mapStreetCache", label = "Map: street labels reused while the view stays",
+              tip = "While the map is not moved or zoomed the whole street-label layout is reused. Map UI 3.8 -> 1.4 ms a redraw." },
+            { key = "mapVisitedFast", label = "Map: explored-area texture built a row at a time",
+              tip = "The map's dark / explored overlay was rebuilt pixel by pixel, re-computing the row width for every pixel; the first map open after loading rebuilds all 16 million. Built a row at a time, the same pixels: the first map open's stutter 97 -> 67 ms." },
+            { key = "luaIndexCache", label = "Lua: class lookups remembered",
+              tip = "A Lua method looked up through a class chain is remembered until any class changes. Exact; no measurable change on the UI scenes." },
+            { key = "luaInternConstants", label = "Lua: shared text constants",
+              tip = "Text constants of every Lua file are shared, so table lookups compare them by identity first. Exact; no measurable change on the UI scenes." },
+            { key = "luaSkipEmpty", label = "Lua: empty UI handlers not called",
+              tip = "A window's draw, update or mouse handler that is an empty Lua function is not called. Exact; no measurable change on the UI scenes." },
+        },
+    },
+    {
         title = "Driving smoothness (the car's stutter and rubber banding)", clip = "drive",
         entries = {
             { key = "vehicleSmooth", label = "Vehicles drawn between physics steps",
@@ -945,6 +972,22 @@ local ENHANCEMENT_SECTIONS = {
               tip = "A torch in your hands also lights a small circle round your feet, behind and beside you. Off: only the beam in front of you is lit. Applies at once." },
         },
     },
+    {
+        title = "Relief (parallax textures: bricks, stones, planks and shingles catch the light)", clip = "torch",
+        entries = {
+            { key = "relief", label = "Relief (parallax textures)",
+              tip = "The fine relief the art paints (mortar between bricks and stones, gaps between planks and floor tiles, roof shingles, cobbles) catches the light that moves: a low sun or the moon rakes it and the grooves fall into shade, a torch, headlight or lamp sweeping along a wall brings the stones out. The height is read once from each chunk picture after it is drawn (two bytes per pixel of video memory); the sun and the moon are baked into the picture with it and redone a few pictures a frame when they move a step, so they cost nothing per frame; a torch, headlight or lamp reads one byte where it shines. Floors and walls only: furniture keeps its painted shading. Sun and moon: needs Sun shadows. Torches, headlights and lamps: needs Per-pixel lighting. Windows and Linux (not on macOS, OpenGL 2.1). Applies on the next launch." },
+            { key = "reliefDepthPct", label = "Relief: depth (%)",
+              choices = { "50", "100", "150", "200" }, note = { ["150"] = "default" },
+              tip = "How deep the grooves between bricks, planks and tiles are." },
+            { key = "reliefSunPct", label = "Relief: in sunlight and moonlight (%)",
+              choices = { "0", "50", "100", "150" }, note = { ["100"] = "default", ["0"] = "torches and lamps only" },
+              tip = "How strongly the sun and the moon bring the relief out (the part of their light that reaches the surface directly: none in shade)." },
+            { key = "reliefTorchShadowSteps", label = "Relief: grooves in torch shadow",
+              choices = { "0", "2", "4" }, note = { ["0"] = "default (off)", ["4"] = "costs ~0.12 ms at 5K" },
+              tip = "The grooves also fall into the shadow of their own edges in torch, headlight and lamp light (each lit pixel follows the light a few texels across the relief). The sun and the moon always have it (baked)." },
+        },
+    },
 }
 
 -- The Enhancements tab's keys apply as soon as Apply is pressed (Java: Config's live reload, pzopt.Enhancements), except
@@ -955,7 +998,9 @@ local NEXT_LAUNCH_ONLY = { hdr = true, hdrAuto = true,
     pplWetSpecular = true, pplSpecPct = true, pplShadows = true,
     -- reflections: the water, puddle and chunk composite shaders are patched when the game loads them (only then);
     -- strength and puddles apply at once
-    reflections = true }
+    reflections = true,
+    -- relief: compiled into the chunk composite programs when the game loads them
+    relief = true, reliefDepthPct = true, reliefSunPct = true, reliefTorchShadowSteps = true }
 for _, section in ipairs(ENHANCEMENT_SECTIONS) do
     for _, entry in ipairs(section.entries) do
         entry.live = not NEXT_LAUNCH_ONLY[entry.key]
@@ -1225,6 +1270,9 @@ local PZOPT_NOTE_KEYS = {
     ["no shading on bushes, grass and flowers"] = "UI_pzopt_note_d1c6c6bc34",
     ["recommended (default): every frame, the shadow moves with the character"] = "UI_pzopt_note_ce8e3865d2",
     ["15 times a second, one frame behind: the earlier behaviour, a little lighter"] = "UI_pzopt_note_0ffb963722",
+    ["torches and lamps only"] = "UI_pzopt_note_1becf6c1ac",
+    ["default (off)"] = "UI_pzopt_note_11ec4ca9a1",
+    ["costs ~0.12 ms at 5K"] = "UI_pzopt_note_15380bab56",
 }
 local PZOPT_SECTION_KEYS = {
     ["Chunk textures: what bakes"] = "UI_pzopt_section_01",
@@ -1259,6 +1307,8 @@ local PZOPT_SECTION_KEYS = {
     ["Per-pixel lighting (smooth light, torch and headlight beams drawn per pixel)"] = "UI_pzopt_section_123e163628",
     ["Performance overlay (F9 or the \"Toggle performance overlay\" key binding; L3 + R3 on a controller)"] = "UI_pzopt_section_8f8fc9b06c",
     ["Performance overlay: fps colour"] = "UI_pzopt_section_09",
+    ["Menus, inventory and map (UI)"] = "UI_pzopt_section_b06ab025e0",
+    ["Relief (parallax textures: bricks, stones, planks and shingles catch the light)"] = "UI_pzopt_section_7a65e33d76",
 }
 local function pzoptLocalizeSections(sections)
     for _, section in ipairs(sections) do
@@ -1636,6 +1686,8 @@ local EFFECTS = {
     godRays = { gpu = 1, vram = 1 },
     godRaysLocal = { gpu = 1 },
     foliageSway = { gpu = 1, vram = 1 },
+    relief = { gpu = 1, vram = 2 },
+    reliefTorchShadowSteps = { gpu = 2 },
     darknessFloorPct = {},
     memoryTint = {},
     colorGrading = { gpu = -1 },
@@ -1686,6 +1738,17 @@ local EFFECTS = {
     soundZoneCache = { cpu = -1 },
     worldSoundFast = { cpu = -1 },
     -- sprite buffers
+    uiRetained = { cpu = -2 },
+    uiRetainedChildren = { cpu = -1 },
+    uiTickStagger = {},
+    uiLuaFast = { cpu = -1 },
+    hotsaveWarmup = { cpu = -1, load = 1 },
+    mapStreetMemo = { cpu = -1 },
+    mapStreetCache = { cpu = -1 },
+    mapVisitedFast = { cpu = -1 },
+    luaIndexCache = {},
+    luaInternConstants = {},
+    luaSkipEmpty = {},
     persistentVbo = { render = -3, gpu = -1 },
     persistentVboFrameSync = { render = -2 },
     persistentVboSlots = { render = -1, vram = 1 },
