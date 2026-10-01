@@ -1154,5 +1154,22 @@
   "UI_pzopt_text_pzopt_optimizations_options_3ba8b11d78": "\n\nNot a true / false value, set to the default: ",
   "UI_pzopt_text_pzopt_optimizations_options_8fb7c2e727": "\n\nNot settings of these tabs in this version, ignored: ",
   "UI_pzopt_text_pzopt_optimizations_options_ff4f72effb": "No settings found in the text: nothing was changed. Paste the text Export settings copied (key=value lines, e.g. treesInChunkTexture=false).",
-  "UI_pzopt_text_pzopt_optimizations_options_827fda6db3": "Paste exported settings (settings not listed go back to the defaults):"
+  "UI_pzopt_text_pzopt_optimizations_options_827fda6db3": "Paste exported settings (settings not listed go back to the defaults):",
+  "UI_pzopt_label_modCompat": "Java mods: switch off what they patch",
+  "UI_pzopt_tip_modCompat": "PZ Optimization ships whole game classes; a Java mod (a ZombieBuddy mod, or a -javaagent such as PZMulticore) patches methods of the same classes. At launch the mods' jars are read: where one patches a method we changed, the settings that live in that method are switched off, so the mod meets the code its author tested. Mods tested together with ours keep everything. Your own choice on this tab still wins. Report = only list them (Zomboid/pzopt/mod-compat.txt and the console); off = no check. Applies on the next launch.",
+  "UI_pzopt_label_uiRetainedMods": "UI: reuse windows that mods draw in",
+  "UI_pzopt_tip_uiRetainedMods": "Windows and buttons that carry a mod's drawing (a mod's own window, or a game window whose drawing a mod replaced or extended) are redrawn at the game's own rate, because a mod may draw from state the reuse cannot see. On = reuse them like the game's own windows (faster, but a mod's display can lag by up to a second). Applies on the next launch.",
+  "UI_pzopt_label_luaWorkerGate": "Lua from helper threads runs on the game thread",
+  "UI_pzopt_tip_luaWorkerGate": "With zombie updates spread over helper threads, a mod's Lua the update reaches (a zombie trampling a crop runs the farming mod code, a mod hooked into the zombie update) ran on the helper thread, beside the game's own Lua: an error \"Lua code called from the wrong thread\" and, at worst, a broken Lua stack. With this on such calls run on the game thread, in the game's order. Applies on the next launch.",
+  "UI_pzopt_label_consoleLog": "PZ Optimization lines in the console",
+  "UI_pzopt_tip_consoleLog": "Which [pzopt] lines go to console.txt and the debug-mode console. Turn it down to read another mod's output without PZ Optimization's startup notes and statistics in between. Applies at once; the game's own lines are not affected. When reporting a problem with PZ Optimization, set it back to all first.",
+  "UI_pzopt_section_9524c495dc": "Mod compatibility",
+  "UI_pzopt_section_c1b1faf238": "Console log",
+  "UI_pzopt_note_96dc0d0632": "everything (startup, settings, periodic statistics)",
+  "UI_pzopt_note_5b1da55142": "only warnings and errors",
+  "UI_pzopt_note_042ebaa1fa": "only errors",
+  "UI_pzopt_note_0feca720e2": "nothing",
+  "UI_pzopt_text_pzopt_optimizations_options_0b5483d832": " Off at this launch for mod compatibility: ",
+  "UI_pzopt_text_pzopt_optimizations_options_e298041658": ". Choosing a value here overrides that.",
+  "UI_pzopt_text_pzopt_optimizations_options_d142971012": "   (off for mod compatibility: "
 }

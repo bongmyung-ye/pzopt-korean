@@ -446,6 +446,18 @@ local SECTIONS = {
         },
     },
     {
+        title = "Mod compatibility", clip = "spin",
+        entries = {
+            { key = "modCompat", label = "Java mods: switch off what they patch",
+              choices = { "auto", "report", "off" }, note = { ["auto"] = "default" },
+              tip = "PZ Optimization ships whole game classes; a Java mod (a ZombieBuddy mod, or a -javaagent such as PZMulticore) patches methods of the same classes. At launch the mods' jars are read: where one patches a method we changed, the settings that live in that method are switched off, so the mod meets the code its author tested. Mods tested together with ours keep everything. Your own choice on this tab still wins. Report = only list them (Zomboid/pzopt/mod-compat.txt and the console); off = no check. Applies on the next launch." },
+            { key = "uiRetainedMods", label = "UI: reuse windows that mods draw in",
+              tip = "Windows and buttons that carry a mod's drawing (a mod's own window, or a game window whose drawing a mod replaced or extended) are redrawn at the game's own rate, because a mod may draw from state the reuse cannot see. On = reuse them like the game's own windows (faster, but a mod's display can lag by up to a second). Applies on the next launch." },
+            { key = "luaWorkerGate", label = "Lua from helper threads runs on the game thread",
+              tip = "With zombie updates spread over helper threads, a mod's Lua the update reaches (a zombie trampling a crop runs the farming mod code, a mod hooked into the zombie update) ran on the helper thread, beside the game's own Lua: an error \"Lua code called from the wrong thread\" and, at worst, a broken Lua stack. With this on such calls run on the game thread, in the game's order. Applies on the next launch." },
+        },
+    },
+    {
         title = "Driving smoothness (the car's stutter and rubber banding)", clip = "drive",
         entries = {
             { key = "vehicleSmooth", label = "Vehicles drawn between physics steps",
@@ -1103,6 +1115,15 @@ local PROFILER_SECTIONS = {
               tip = "Named colour, or a RRGGBB hex value typed into Zomboid/pzopt/options.ini." },
         },
     },
+    {
+        title = "Console log", clip = "spin",
+        entries = {
+            { key = "consoleLog", label = "PZ Optimization lines in the console",
+              choices = { "all", "warnings", "errors", "off" },
+              note = { all = "everything (startup, settings, periodic statistics)", warnings = "only warnings and errors", errors = "only errors", off = "nothing" },
+              tip = "Which [pzopt] lines go to console.txt and the debug-mode console. Turn it down to read another mod's output without PZ Optimization's startup notes and statistics in between. Applies at once; the game's own lines are not affected. When reporting a problem with PZ Optimization, set it back to all first." },
+        },
+    },
 }
 -- Every Profiler-tab key applies while the game runs (Java: Config.isLive): no restart dialog, "now" in the preview.
 for _, section in ipairs(PROFILER_SECTIONS) do
@@ -1273,7 +1294,11 @@ local PZOPT_NOTE_KEYS = {
     ["torches and lamps only"] = "UI_pzopt_note_1becf6c1ac",
     ["default (off)"] = "UI_pzopt_note_11ec4ca9a1",
     ["costs ~0.12 ms at 5K"] = "UI_pzopt_note_15380bab56",
-}
+
+    ["everything (startup, settings, periodic statistics)"] = "UI_pzopt_note_96dc0d0632",
+    ["only warnings and errors"] = "UI_pzopt_note_5b1da55142",
+    ["only errors"] = "UI_pzopt_note_042ebaa1fa",
+    ["nothing"] = "UI_pzopt_note_0feca720e2",}
 local PZOPT_SECTION_KEYS = {
     ["Chunk textures: what bakes"] = "UI_pzopt_section_01",
     ["Chunk textures: bake budgets"] = "UI_pzopt_section_02",
@@ -1309,7 +1334,9 @@ local PZOPT_SECTION_KEYS = {
     ["Performance overlay: fps colour"] = "UI_pzopt_section_09",
     ["Menus, inventory and map (UI)"] = "UI_pzopt_section_b06ab025e0",
     ["Relief (parallax textures: bricks, stones, planks and shingles catch the light)"] = "UI_pzopt_section_7a65e33d76",
-}
+
+    ["Mod compatibility"] = "UI_pzopt_section_9524c495dc",
+    ["Console log"] = "UI_pzopt_section_c1b1faf238",}
 local function pzoptLocalizeSections(sections)
     for _, section in ipairs(sections) do
         local sectionKey = PZOPT_SECTION_KEYS[section.title]
@@ -1341,6 +1368,17 @@ local function perf()
 end
 
 -- The value the next launch will read: pinned > saved > default.
+-- "" or why mod compatibility switched the key off at this launch (pzopt.ModCompat: a Java mod patches its method)
+local function compatReason(key)
+    return perf():getPzoptModCompatReason(key)
+end
+
+-- Mod compatibility decides the key: it switched it off and the player has no saved choice. The control shows the value in
+-- force and Apply stores nothing until the player changes it (then the choice is saved even when it is the default).
+local function compatDecides(key)
+    return compatReason(key) ~= "" and perf():getPzoptOptionSaved(key) == ""
+end
+
 local function nextValue(entry)
     local p = perf()
     if p:getPzoptOptionPinnedBy(entry.key) ~= "" then
@@ -1349,6 +1387,9 @@ local function nextValue(entry)
     local saved = p:getPzoptOptionSaved(entry.key)
     if saved ~= "" then
         return saved
+    end
+    if compatDecides(entry.key) then
+        return p:getPzoptOption(entry.key)
     end
     return p:getPzoptOptionDefault(entry.key)
 end
@@ -1390,6 +1431,11 @@ local function tooltipFor(entry, pinnedBy)
     local t = entry.tip .. " " .. noteFor(entry) .. pzoptTr("UI_pzopt_text_optimizations_options_2ca22a6036", " Key: ") .. entry.key .. "."
     if pinnedBy ~= "" then
         t = t .. pzoptTr("UI_pzopt_text_optimizations_options_81e679d357", " Pinned by ") .. pinnedBy .. pzoptTr("UI_pzopt_text_optimizations_options_34ce11439f", " for this install; the menu cannot change it.")
+    end
+    local reason = compatReason(entry.key)
+    if reason ~= "" then
+        t = t .. pzoptTr("UI_pzopt_text_pzopt_optimizations_options_0b5483d832", " Off at this launch for mod compatibility: ") .. reason
+            .. pzoptTr("UI_pzopt_text_pzopt_optimizations_options_e298041658", ". Choosing a value here overrides that.")
     end
     return t
 end
@@ -1742,6 +1788,9 @@ local EFFECTS = {
     uiRetainedChildren = { cpu = -1 },
     uiTickStagger = {},
     uiLuaFast = { cpu = -1 },
+    modCompat = {},
+    uiRetainedMods = { cpu = -1 },
+    luaWorkerGate = {},
     hotsaveWarmup = { cpu = -1, load = 1 },
     mapStreetMemo = { cpu = -1 },
     mapStreetCache = { cpu = -1 },
@@ -1773,6 +1822,7 @@ local EFFECTS = {
     overlayGraphHz = { cpu = 1, render = 1 },
     overlayFlame = { cpu = 1, cores = 1 },
     gameThreadProfileHz = { cores = 1, cpu = 1 },
+    consoleLog = {},
     -- chunk streaming
     parallel = { cores = 3, ram = 1, chunks = -3 },
     workers = { cores = 2, chunks = -1 },
@@ -2071,6 +2121,8 @@ function PzoptPreview:prerender()
         and (pzoptTr("UI_pzopt_text_optimizations_options_4a5160894c", "Key ") .. entry.key .. pzoptTr("UI_pzopt_text_pzopt_optimizations_options_2a79f017f9", "   now: ") .. p:getPzoptOption(entry.key) .. pzoptTr("UI_pzopt_text_pzopt_optimizations_options_d5cce479bc", "   after Apply: ") .. row.option:pzoptCurrent())
         or (pzoptTr("UI_pzopt_text_optimizations_options_4a5160894c", "Key ") .. entry.key .. pzoptTr("UI_pzopt_text_optimizations_options_36360d3139", "   since this boot: ") .. p:getPzoptOption(entry.key) .. pzoptTr("UI_pzopt_text_optimizations_options_481360cb6f", "   next launch: ") .. row.option:pzoptCurrent())
     if pinnedBy ~= "" then values = values .. pzoptTr("UI_pzopt_text_optimizations_options_92c83d4d4e", "   (pinned by ") .. pinnedBy .. ")" end
+    local reason = compatReason(entry.key)
+    if reason ~= "" then values = values .. pzoptTr("UI_pzopt_text_pzopt_optimizations_options_d142971012", "   (off for mod compatibility: ") .. reason .. ")" end
     self:text(getTextManager():WrapText(self.fontS, values, w, 1, "..."), x, y, C_GREY)
     y = y + self.hS + 2
     local classes = optionClasses(entry.key)
@@ -2673,11 +2725,18 @@ local function addBoolOption(self, entry, splitpoint, y, BUTTON_HGT)
     end
     local option = GameOption:new("pzopt." .. entry.key, box)
     function option.toUI(self)
-        self.control:setSelected(1, nextValue(entry) == "true")
+        self.pzoptShown = nextValue(entry)
+        self.control:setSelected(1, self.pzoptShown == "true")
     end
     function option.apply(self)
         if pinnedBy ~= "" then return end
         local value = tostring(self.control:isSelected(1))
+        if compatDecides(entry.key) then
+            if value == self.pzoptShown then return end -- untouched: mod compatibility keeps deciding
+            perf():setPzoptOption(entry.key, value) -- the player's choice beats mod compatibility, the default too
+            afterStore(self, entry, value)
+            return
+        end
         local before = entry.restartKeys and startupSignature(entry)
         store(entry, value)
         afterStore(self, entry, value)
@@ -2685,9 +2744,13 @@ local function addBoolOption(self, entry, splitpoint, y, BUTTON_HGT)
             self:restartRequired(before, startupSignature(entry))
         end
     end
-    -- the "Enable all" button puts the control back to the build's default
+    -- the "Enable all" button puts the control back to the build's default (mod compatibility's value where it decides)
     function option.pzoptReset(self)
         if pinnedBy ~= "" then return end
+        if compatDecides(entry.key) then
+            self.control:setSelected(1, self.pzoptShown == "true")
+            return
+        end
         self.control:setSelected(1, perf():getPzoptOptionDefault(entry.key) == "true")
     end
     -- a profile button sets an explicit value (nil = the build's default)
@@ -3264,6 +3327,8 @@ local function exportValue(option)
     end
     local v = option:pzoptCurrent()
     if string.sub(v, -10) == " (default)" or v == p:getPzoptOptionDefault(key) then return nil end
+    -- mod compatibility's value for this launch is not a setting of the player's (left out unless they changed it)
+    if option.pzoptShown ~= nil and v == option.pzoptShown and compatDecides(key) then return nil end
     return v
 end
 
@@ -3798,7 +3863,7 @@ local function buildSettingsPage(self, page)
     end
     self.gameOptions.changed = wasChanged
     self.mainPanel, self.addY = savedPanel, savedAddY
-    print("[pzopt] options tab " .. page.tab .. ": " .. added .. " controls, " .. pinned .. " pinned by pzopt.properties or -D, "
+    PzoptLogInfo("[pzopt] options tab " .. page.tab .. ": " .. added .. " controls, " .. pinned .. " pinned by pzopt.properties or -D, "
         .. #rows .. " preview rows, preview " .. L.previewW .. " px at x=" .. L.previewX
         .. ", built in " .. (getTimestampMs() - pzoptT0) .. " ms")
 end
@@ -3833,7 +3898,7 @@ local function install()
         self.pzoptCreated = true
         local t0 = getTimestampMs()
         local r = stockCreate(self, ...)
-        print("[pzopt] options screen: MainOptions:create took " .. (getTimestampMs() - t0) .. " ms")
+        PzoptLogInfo("[pzopt] options screen: MainOptions:create took " .. (getTimestampMs() - t0) .. " ms")
         -- build each of our tabs when it is first shown (pzoptAddOptimizationsPanel added them empty)
         local tabs = self.tabs
         if tabs and self.pzoptPanel then
@@ -3875,7 +3940,7 @@ local function install()
                 fileOutput:close()
             end
             self.pzoptCreatePending = true
-            print("[pzopt] options screen: build deferred until it is opened (key bindings loaded)")
+            PzoptLogInfo("[pzopt] options screen: build deferred until it is opened (key bindings loaded)")
             return
         end
         return fullCreate(self, ...)

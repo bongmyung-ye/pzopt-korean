@@ -8,7 +8,7 @@ PZ_Optimization의 최적화, 화면 향상, 프로파일러 설정과 각 옵�
 
 - Project Zomboid 42.21
 - Revision: `4a0e9546ec`
-- PZ_Optimization: `c29e008-dirty`
+- PZ_Optimization: `45fb43f7`
 
 ## 설치
 
@@ -38,6 +38,6 @@ Mod ID: `PZOptKorean`
 
 - Project Zomboid 42.21
 - Revision: `4a0e9546ec`
-- PZ_Optimization: `c29e008-dirty`
+- PZ_Optimization: `45fb43f7`
 
 게임 또는 PZ_Optimization이 업데이트될 경우 호환성을 다시 확인해야 할 수 있습니다.
