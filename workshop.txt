@@ -1,6 +1,6 @@
 version=1
 id=3807119354
 title=PZ_Optimization 한글패치 [B42]
-description=Project Zomboid 42.21 (revision 4a0e9546ec) / PZ_Optimization 1274f92용 비공식 한국어 UI 패치입니다. 원본 PZ_Optimization은 별도로 설치해야 하며, 창작마당 구독만으로 원본 Java 클래스가 설치되지는 않습니다. 기존 설치형 한국어 패치와 중복 활성화하지 마세요. 멀티플레이에서는 서버의 WorkshopItems/Mods 목록에도 이 패치를 추가해야 한국어 UI가 적용됩니다. 게임 또는 원본 모드가 업데이트되면 호환성을 다시 확인해야 합니다. 원본: https://github.com/xD3I/PZ_Optimization / 한국어 패치 GitHub: https://github.com/bongmyung-ye/pzopt-korean
+description=Project Zomboid 42.21 (revision 4a0e9546ec) / PZ_Optimization c29e008-dirty용 비공식 한국어 UI 패치입니다. 원본 PZ_Optimization은 별도로 설치해야 하며, 창작마당 구독만으로 원본 Java 클래스가 설치되지는 않습니다. 기존 설치형 한국어 패치와 중복 활성화하지 마세요. 멀티플레이에서는 서버의 WorkshopItems/Mods 목록에도 이 패치를 추가해야 한국어 UI가 적용됩니다. 게임 또는 원본 모드가 업데이트되면 호환성을 다시 확인해야 합니다. 원본: https://github.com/xD3I/PZ_Optimization / 한국어 패치 GitHub: https://github.com/bongmyung-ye/pzopt-korean
 tags=Build 42;Language/Translation
 visibility=public
