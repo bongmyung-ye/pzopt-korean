@@ -46,8 +46,8 @@ local MASTER = { key = "enabled", label = "Optimizations enabled (master switch)
 -- (Config's GATED list) while the choices below stay saved for when it is on again. Both apply at once; the features
 -- that pick their shaders or window at start-up (NEXT_LAUNCH_ONLY) follow on the next launch.
 local ENHANCEMENTS_MASTER = { key = "enhancementsEnabled", label = "Enhancements enabled (master switch)", live = true,
-  restartKeys = { "hdr", "hdrAuto", "pixelLight", "reflections" },
-  tip = "Off = the picture is the stock game's: upscaling, sprite filtering, HDR output, ambient occlusion, sun shadows, reflections, the darkness floor, remembered places, colour grading, per-pixel lighting, god rays and foliage sway are all off, whatever the settings below say (they are kept for when you switch it on again). On = the settings below apply. HDR output, per-pixel lighting and reflections switch on the next launch." }
+  restartKeys = { "hdr", "hdrAuto", "pixelLight", "reflections", "carGlass" },
+  tip = "Off = the picture is the stock game's: upscaling, sprite filtering, HDR output, ambient occlusion, sun shadows, reflections, car glass, the darkness floor, remembered places, colour grading, per-pixel lighting, god rays and foliage sway are all off, whatever the settings below say (they are kept for when you switch it on again). On = the settings below apply. HDR output, per-pixel lighting, reflections and car glass switch on the next launch." }
 local PROFILER_MASTER = { key = "profilerEnabled", label = "Profiler enabled (master switch)", live = true,
   tip = "Off = no performance overlay, no measuring and no frame log: the overlay's samplers never start and the toggle key only says the profiler is off, whatever the settings below say (they are kept for when you switch it on again). On = the settings below apply." }
 
@@ -63,7 +63,7 @@ local SECTIONS = {
             { key = "treesInChunkTexture", label = "Trees: bake into chunk textures",
               tip = "Static trees are drawn once into the chunk textures instead of every frame; only fading trees stay per-frame. Off = stock (every tree every frame)." },
             { key = "windSpriteSway", label = "Wind sprite effects: sway the baked plants",
-              tip = "With the game's own \"Wind sprite effects\" display option on, grass, bushes and trees stay in the chunk textures and bend in the wind through Foliage sway, instead of the option drawing every plant one by one every frame (a forest at max zoom on a laptop: 133 fps with the stock option, 369 with this, 372 without wind). Nothing changes while the game option is off. Off = the stock option's per-frame drawing. Not on macOS (no Foliage sway there)." },
+              tip = "With the game's own \"Wind sprite effects\" display option on, grass, bushes and trees stay in the chunk textures and bend in the wind through Foliage sway, instead of the option drawing every plant one by one every frame (a forest at max zoom on a laptop: 133 fps with the stock option, 369 with this, 372 without wind). Nothing changes while the game option is off. Off = the stock option's per-frame drawing." },
             { key = "treeBakeMaxChunksPerSec", label = "Trees: bake only below this chunk rate (chunks/s)",
               choices = { "0", "12", "24", "48" }, note = { ["0"] = "always bake" },
               tip = "While chunks stream in faster than this (walking loads about 9 a second, driving at 60 km/h about 32, at 120 km/h about 72) new chunk textures are baked without their trees and the trees are drawn per frame instead: a texture that lives a second or two while driving costs more to bake its trees into than to draw them. Textures already baked keep their trees until they re-bake anyway." },
@@ -93,9 +93,11 @@ local SECTIONS = {
             { key = "fliesToggleFix", label = "Corpse flies: no re-bake when nothing moved",
               tip = "The corpse-flies update cleared and set the same square's flies every few frames while driving, and each toggle re-baked the chunk texture next to you at once; the clear is skipped when the square stays the same." },
             { key = "windowsInChunkTexture", label = "Bake windows into chunk textures",
-              tip = "Windows and glass doors bake like walls instead of being drawn every frame." },
+              tip = "Windows and glass doors bake like walls instead of being drawn every frame. Off by default: baked glass hides zombies standing behind it (outside the window you look through), and it measured no frame-time gain." },
             { key = "translucentTilesInChunkTexture", label = "Bake translucent tiles",
               tip = "Fences, railings, wall decorations and overlays bake into the chunk textures instead of being drawn every frame (about 3,000 draws a frame at max zoom)." },
+            { key = "glassTilesPerFrame", label = "Glass tiles stay per frame",
+              tip = "Translucent tiles made of glass (display cases, glass-door fridges, escalator and mall balustrades, glass partitions) are drawn every frame as in the stock game, so you and zombies stay visible behind them. Baked, the glass hid whoever stood behind it. A few draws a frame where there is glass." },
             { key = "translucentLightsPerFrame", label = "Light fixtures stay per frame",
               tip = "Translucent light fixtures that have a lit sprite (ceiling lights, lamps) are drawn every frame as in the stock game, so a lit ceiling light never shows through the floor or roof above it (a gas-station canopy's tubes did). A few draws a frame." },
             { key = "curtainDepthNudgePct", label = "Curtain depth nudge (hundredths of a tile)",
@@ -498,6 +500,10 @@ local SECTIONS = {
               choices = { "auto", "true", "false" },
               note = { auto = "Linux", ["true"] = "every platform", ["false"] = "stock window" },
               tip = "KWin, Mutter and gamescope only switch variable refresh on for fullscreen windows; the stock borderless window is just a screen-sized window, so a G-SYNC / FreeSync display stayed at its fixed refresh (0 % of the time in VRR vs 100 % with this on, desktop KDE test). The window is held as a fullscreen window at the desktop's own resolution (no mode switch) and stays on screen when you switch away." },
+            { key = "macGlCore", label = "macOS: OpenGL 4.1 (needed by the Enhancements)",
+              tip = "On a Mac the game asks for Apple's old OpenGL 2.1, the only version Apple offers that still has the 1990s drawing calls the game uses here and there. Everything newer (OpenGL 4.1, GLSL 4.10) only comes without them, so every Enhancement (shadows, ambient occlusion, reflections, god rays, per-pixel light, HDR effects...) stayed off on macOS. With this on the game runs on OpenGL 4.1 and pzopt stands in for the old calls: its shaders are translated, the old alpha test, matrices and immediate-mode quads are emulated. Same picture as before; the Enhancements tab then works on a Mac (screen-space reflections use the ray march there: OpenGL 4.1 has no image atomics). Applies on the next launch; if the Mac cannot give a 4.1 context the game starts on 2.1 as before." },
+            { key = "macGlTimerQueries", label = "macOS (OpenGL 4.1): GPU timer queries",
+              tip = "The performance overlay's GPU load and present pacing's GPU timing ask the graphics driver to time each frame. On a Mac's OpenGL 4.1 (Apple's OpenGL runs on top of Metal) that cost a third of the frame rate (106 -> 68 fps on the test route, MacBook Pro M1 Pro), so it is off: the overlay shows no GPU load and present pacing measures on the CPU, as on OpenGL 2.1. On for a measurement that needs the GPU time. Applies on the next launch." },
             { key = "macPresent", label = "macOS: present through Metal (ProMotion timing)",
               choices = { "off", "on" },
               note = { on = "Apple silicon; needs fullscreen or borderless for the finer steps" },
@@ -555,7 +561,7 @@ local SECTIONS = {
         title = "Updates", clip = "load",
         entries = {
             { key = "updateCheck", label = "Offer new releases in the main menu",
-              tip = "Once per boot the main menu asks the GitHub releases (one request to api.github.com) whether a newer build for this game revision exists. The \"UPDATE PZ OPTIMIZATION\" item between Credits and Exit is greyed out while the build is current and enabled when a newer one exists: it downloads the zip, replaces the installed files and asks to quit so the next launch loads them. Nothing is downloaded without that click. Applies on the next launch." },
+              tip = "Once per boot the main menu checks the GitHub releases once to see whether a newer build for this game revision exists. The \"UPDATE PZ OPTIMIZATION\" item between Credits and Exit is greyed out while the build is current and enabled when a newer one exists: it downloads the zip, replaces the installed files and asks to quit so the next launch loads them. Nothing is downloaded without that click. Applies on the next launch." },
             { key = "updatePrefetch", label = "Get an offered update ready in the background",
               tip = "When the check finds a newer build, the files that differ from the installed ones are fetched right away (a release apart is usually a few files, tens of KB, read out of the release zip with range requests; the whole zip is never downloaded without the click), so Update now only writes them: a few milliseconds instead of downloading and unpacking 59 MB. Needs the first setting. Applies on the next launch." },
             { key = "updateFromWorkshop", label = "Update from the Steam Workshop copy",
@@ -739,7 +745,7 @@ local ENHANCEMENT_SECTIONS = {
             { key = "spriteFilter", label = "Sprite filtering",
               choices = { "stock", "sharp", "nearest" },
               note = { stock = "the game's own (soft at 75 % zoom and when zoomed out)", sharp = "texel-aware: crisp edges without shimmer", nearest = "hard pixels" },
-              tip = "How the world's art is scaled to your zoom. The game draws it sharp at 100 % and 50 %, soft at 75 % (a linear blur) and when zoomed out (a blend of the full picture and a blurred half-size copy: the blurry look while driving). Sharp: zoomed in, every texel of the art stays a hard square and only the one screen pixel an edge crosses is blended by how much of it the texel covers, so edges are crisp at any zoom and do not crawl while the camera glides; zoomed out, four samples per pixel from a sharper copy of the art keep fences, window frames and road lines sharp without shimmer. At 100 % the picture is the game's own. Nearest: hard pixels at every zoom-in step (75 % included), no blending. Costs next to nothing (the world picture is sampled by a variant of the same program, picked once a frame for the zoom). Windows and Linux (not on macOS, OpenGL 2.1); with per-pixel lighting on it applies on the next launch." },
+              tip = "How the world's art is scaled to your zoom. The game draws it sharp at 100 % and 50 %, soft at 75 % (a linear blur) and when zoomed out (a blend of the full picture and a blurred half-size copy: the blurry look while driving). Sharp: zoomed in, every texel of the art stays a hard square and only the one screen pixel an edge crosses is blended by how much of it the texel covers, so edges are crisp at any zoom and do not crawl while the camera glides; zoomed out, four samples per pixel from a sharper copy of the art keep fences, window frames and road lines sharp without shimmer. At 100 % the picture is the game's own. Nearest: hard pixels at every zoom-in step (75 % included), no blending. Costs next to nothing (the world picture is sampled by a variant of the same program, picked once a frame for the zoom). Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default); with per-pixel lighting on it applies on the next launch." },
             { key = "spriteFilterMin", label = "Sprite filtering: zoomed out",
               choices = { "rgssa2", "rgssa", "floor", "rgss4", "trilinear" },
               note = { rgssa2 = "adaptive, two samples (default)", rgssa = "adaptive, four samples", floor = "one sample, sharpest", rgss4 = "four samples, steadiest, softer", trilinear = "the game's own blend" },
@@ -791,7 +797,7 @@ local ENHANCEMENT_SECTIONS = {
         title = "Ambient occlusion (soft shading in corners, along wall bases and under furniture)", clip = "ao",
         entries = {
             { key = "ambientOcclusion", label = "Ambient occlusion",
-              tip = "Soft shading where surfaces meet: floors darken a little along the base of walls, in room corners, under and around furniture, fences, stairs and bushes, so buildings and objects sit on the ground instead of floating on it. Computed from the game's own depth when a chunk's picture is drawn and baked into it, so it costs nothing on frames that draw no new chunk picture and nothing while the camera moves. Characters and vehicles keep their own shadows. Windows and Linux (the macOS game runs on OpenGL 2.1, which lacks the shader features; there it stays off). Changing an ambient occlusion setting redraws every chunk picture over the next few frames." },
+              tip = "Soft shading where surfaces meet: floors darken a little along the base of walls, in room corners, under and around furniture, fences, stairs and bushes, so buildings and objects sit on the ground instead of floating on it. Computed from the game's own depth when a chunk's picture is drawn and baked into it, so it costs nothing on frames that draw no new chunk picture and nothing while the camera moves. Characters and vehicles keep their own shadows. Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default; on OpenGL 2.1 it stays off). Changing an ambient occlusion setting redraws every chunk picture over the next few frames." },
             { key = "aoStrengthFloorPct", label = "Ambient occlusion: strength on floors (%)",
               choices = { "0", "25", "50", "75", "100", "150" }, note = { ["0"] = "no shading on floors", ["100"] = "default" },
               tip = "How dark the shading gets on floors and flat ground where it is strongest: along the base of walls, in room corners, under furniture and around what stands on them. 0 leaves floors unshaded. The three strengths replace the single strength of earlier versions, whose value they take until you set them." },
@@ -819,7 +825,7 @@ local ENHANCEMENT_SECTIONS = {
         title = "Sun, moon and cloud shadows (soft shadows of walls, trees, fences and furniture that follow the real sky)", clip = "ao",
         entries = {
             { key = "sunShadows", label = "Sun shadows",
-              tip = "By day, walls, trees, fences, cars parked in the world's pictures and furniture outdoors cast soft shadows of the sun onto the ground and onto each other: sharp where they touch the ground, softer further away, like real sunlight. The sun stands where it really does over Kentucky for the game's date and hour (high and short-shadowed in summer, low and long in winter, rising in the north-east in June and the south-east in December), so the shadows turn and lengthen through the day; rain and fog thin them out and they fade away at dusk. Indoors stays as it is (rooms have a roof). Computed with the ambient occlusion when a chunk's picture is drawn and baked into it, so a still or moving camera costs nothing; when the sun has moved a little (every few in-game minutes) the pictures on screen are updated a few per frame. Windows and Linux (not on macOS, OpenGL 2.1)." },
+              tip = "By day, walls, trees, fences, cars parked in the world's pictures and furniture outdoors cast soft shadows of the sun onto the ground and onto each other: sharp where they touch the ground, softer further away, like real sunlight. The sun stands where it really does over Kentucky for the game's date and hour (high and short-shadowed in summer, low and long in winter, rising in the north-east in June and the south-east in December), so the shadows turn and lengthen through the day; rain and fog thin them out and they fade away at dusk. Indoors stays as it is (rooms have a roof). Computed with the ambient occlusion when a chunk's picture is drawn and baked into it, so a still or moving camera costs nothing; when the sun has moved a little (every few in-game minutes) the pictures on screen are updated a few per frame. Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default)." },
             { key = "sunShadowStrengthPct", label = "Sun shadows: strength (%)",
               choices = { "25", "35", "45", "60", "75" }, note = { ["45"] = "default" },
               tip = "How much of the daylight a full shadow takes away on a clear day. Clouds, rain and fog lower it further." },
@@ -867,7 +873,7 @@ local ENHANCEMENT_SECTIONS = {
         title = "Reflections (the scene mirrored in rivers, lakes and puddles)", clip = "hdr",
         entries = {
             { key = "reflections", label = "Reflections",
-              tip = "Buildings, fences, trees, lamp posts, cars and characters are mirrored in rivers, lakes and puddles, rippled by the waves and the rain, sharp where they meet the water and softer further out, stronger at grazing angles of the waves. Every surface picture the game already draws writes itself where its mirror image lands, so the water only looks up one value: nothing extra is drawn where there is no water or puddle on screen. Characters' reflections are one frame behind. Windows and Linux (not on macOS, OpenGL 2.1). Turning it on applies on the next launch (the game's water and chunk shaders are only patched when it starts with reflections on; off, they stay exactly the game's own)." },
+              tip = "Buildings, fences, trees, lamp posts, cars and characters are mirrored in rivers, lakes and puddles, rippled by the waves and the rain, sharp where they meet the water and softer further out, stronger at grazing angles of the waves. Every surface picture the game already draws writes itself where its mirror image lands, so the water only looks up one value: nothing extra is drawn where there is no water or puddle on screen. Characters' reflections are one frame behind. Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default; there the water marches up its pixel column for the reflection, OpenGL 4.1 has no image atomics for the pixel-projected method). Turning it on applies on the next launch (the game's water and chunk shaders are only patched when it starts with reflections on; off, they stay exactly the game's own)." },
             { key = "reflectionStrengthPct", label = "Reflections: strength (%)",
               choices = { "25", "45", "70", "100" }, note = { ["45"] = "default" },
               tip = "How strongly the water mirrors the scene. Real water seen from the game's camera angle reflects little (a few percent, more on the side of a wave); higher is more of a mirror." },
@@ -876,10 +882,29 @@ local ENHANCEMENT_SECTIONS = {
         },
     },
     {
+        title = "Car glass (windows that reflect the world and show the cabin)", clip = "hdr",
+        entries = {
+            { key = "carGlass", label = "Car glass",
+              tip = "Car windows become glass instead of the stock opaque blue: they mirror the sky (the game's own, with its clouds and sunsets, turned to the real sun), the buildings, trees and road around the car (each car's small reflection probe, marched through the scene before the cars are drawn), and glint where they mirror the sun, the moon, the street lamps and headlights, more at grazing angles (Fresnel); and through them you see the cabin: seats, headrests, the dashboard, the driver and passengers, and the street behind the car where you look out through the far window. Cracks, blood and broken-out windows stay as the game draws them; rain beads on the glass. About a hundredth of a millisecond for a street of parked cars on a fast GPU; nothing when no car is on screen. Windows and Linux (not on macOS, OpenGL 2.1). Turning it on applies on the next launch (the game's vehicle shaders are only patched when it starts with car glass on)." },
+            { key = "carGlassReflectPct", label = "Car glass: reflection strength (%)",
+              choices = { "60", "100", "150", "200" }, note = { ["100"] = "default" },
+              tip = "How strongly the windows mirror (100: real glass, four percent head-on, more at grazing angles; higher reads more like a mirror)." },
+            { key = "carGlassInteriorPct", label = "Car glass: cabin light (%)",
+              choices = { "50", "100", "150", "200" }, note = { ["100"] = "default" },
+              tip = "How bright the inside of the car is behind the glass." },
+            { key = "carGlassSunPct", label = "Car glass: sun and moon glint (%)",
+              choices = { "0", "50", "100", "200" }, note = { ["100"] = "default", ["0"] = "none" },
+              tip = "The sharp highlight where a window mirrors the sun (or the moon at night)." },
+            { key = "carGlassRainPct", label = "Car glass: raindrops (%)",
+              choices = { "0", "50", "100" }, note = { ["100"] = "default", ["0"] = "none" },
+              tip = "Drops beading on the windows of cars standing out in the rain, each a tiny lens that catches the sky and the glints." },
+        },
+    },
+    {
         title = "Wet blood (fresh blood reflects and catches the light)", clip = "hdr",
         entries = {
             { key = "bloodWet", label = "Wet blood",
-              tip = "Fresh blood on the floor is a film of liquid until it dries: the rims of the pools catch the sun and the lamps, the sky and (with Reflections on) the zombies and walls standing in them are mirrored at the film's own angle, and with HDR output the highlights go above white. The film's shape comes from the splat itself (flat pools, bright edges) and it dries from the edges in. Only the wet splats on screen are drawn, once a frame, like the puddles; walls, tables and bodies in front of the floor hide it. Windows and Linux (not on macOS, OpenGL 2.1)." },
+              tip = "Fresh blood on the floor is a film of liquid until it dries: the rims of the pools catch the sun and the lamps, the sky and (with Reflections on) the zombies and walls standing in them are mirrored at the film's own angle, and with HDR output the highlights go above white. The film's shape comes from the splat itself (flat pools, bright edges) and it dries from the edges in. Only the wet splats on screen are drawn, once a frame, like the puddles; walls, tables and bodies in front of the floor hide it. Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default)." },
             { key = "bloodWetMinutes", label = "Wet blood: stays wet (game minutes)",
               choices = { "30", "60", "120", "240" }, note = { ["120"] = "default" },
               tip = "How long a splat stays wet, in game time." },
@@ -898,7 +923,7 @@ local ENHANCEMENT_SECTIONS = {
         title = "God rays (light shafts through windows, doorways, trees and fog)", clip = "hdr",
         entries = {
             { key = "godRays", label = "God rays",
-              tip = "Sunlight (and moonlight) falls through windows and open doorways into rooms as shafts of light in the dust, with sunlit patches on the floor, tables and walls where it lands, cut exactly by the window frames; outdoors, in fog, rain and morning mist, the shadows of buildings and trees stretch through the haze; torches, headlights and lamps glow in the dust and fog around them. Walls, roofs, upper floors, curtains and barricades block the light; tree crowns let it through their gaps. Nothing is drawn where no light comes in: a clear day costs only the rooms with sunlit windows on screen (one draw), the haze pass runs only in fog, rain or mist. Windows and Linux (not on macOS, OpenGL 2.1)." },
+              tip = "Sunlight (and moonlight) falls through windows and open doorways into rooms as shafts of light in the dust, with sunlit patches on the floor, tables and walls where it lands, cut exactly by the window frames; outdoors, in fog, rain and morning mist, the shadows of buildings and trees stretch through the haze; torches, headlights and lamps glow in the dust and fog around them. Walls, roofs, upper floors, curtains and barricades block the light; tree crowns let it through their gaps. Nothing is drawn where no light comes in: a clear day costs only the rooms with sunlit windows on screen (one draw), the haze pass runs only in fog, rain or mist. Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default)." },
             { key = "godRaysStrengthPct", label = "God rays: brightness (%)",
               choices = { "50", "75", "100", "150", "200" }, note = { ["100"] = "default" },
               tip = "How bright the shafts of light and the sunlit patches are." },
@@ -922,7 +947,7 @@ local ENHANCEMENT_SECTIONS = {
         title = "Foliage sway (grass, bushes and trees in the wind)", clip = "hdr",
         entries = {
             { key = "foliageSway", label = "Foliage sway",
-              tip = "Grass, bushes and trees bend and sway in the wind: they lean with it, gusts roll across fields and tree crowns, each plant swings at its own pace (grass quick, trees slow) and leaves flutter. The plants stay in the game's cached chunk pictures; the pass that puts those pictures on screen every frame moves each plant's pixels by the wind, so nothing extra is drawn. The game's own \"Wind sprite effects\" option (off by default) does this by drawing every plant every frame instead. Windows and Linux (not on macOS, OpenGL 2.1)." },
+              tip = "Grass, bushes and trees bend and sway in the wind: they lean with it, gusts roll across fields and tree crowns, each plant swings at its own pace (grass quick, trees slow) and leaves flutter. The plants stay in the game's cached chunk pictures; the pass that puts those pictures on screen every frame moves each plant's pixels by the wind, so nothing extra is drawn. The game's own \"Wind sprite effects\" option (off by default) does this by drawing every plant every frame instead. Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default)." },
             { key = "foliageSwayPct", label = "Foliage sway: strength (%)",
               choices = { "50", "100", "150", "200" }, note = { ["100"] = "default" },
               tip = "How far the plants bend in the wind." },
@@ -940,7 +965,7 @@ local ENHANCEMENT_SECTIONS = {
             { key = "darknessFloorBasements", label = "Darkness floor: also in basements",
               tip = "Basements and everything below ground get the darkness floor too. Off: below ground stays as dark as the game makes it." },
             { key = "memoryTint", label = "Remembered places",
-              tip = "What you cannot see right now (behind walls, behind you) is drawn like a memory, desaturated, dimmer and cooler, with a soft edge, instead of darkened; rooms of a building you walked out of keep a dim remembered light and their furniture instead of going black. Zombies and other characters out of sight stay hidden as always. Replaces the view cone's own darkening in the same pass, so it costs nothing extra. Windows and Linux (not on macOS, OpenGL 2.1)." },
+              tip = "What you cannot see right now (behind walls, behind you) is drawn like a memory, desaturated, dimmer and cooler, with a soft edge, instead of darkened; rooms of a building you walked out of keep a dim remembered light and their furniture instead of going black. Zombies and other characters out of sight stay hidden as always. Replaces the view cone's own darkening in the same pass, so it costs nothing extra. Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default)." },
             { key = "memoryTintPct", label = "Remembered places: strength (%)",
               choices = { "40", "55", "70", "85", "100" }, note = { ["70"] = "default" },
               tip = "How strongly what you cannot see is desaturated and dimmed. 100 turns it fully grey." },
@@ -948,7 +973,7 @@ local ENHANCEMENT_SECTIONS = {
               choices = { "5", "10", "15", "20" }, note = { ["10"] = "default" },
               tip = "How bright rooms you have seen stay once they are out of sight (the game fades them to black)." },
             { key = "colorGrading", label = "Colour grading",
-              tip = "The picture is colour graded by time of day and weather, like a film: nights shift towards the desaturated blue-green your eyes see in the dark (the Purkinje effect) while lamps and fires keep their colour, dawn is pink and cool in the shadows, the hour before dusk golden, overcast and rain greyer and cooler, storms dark and cold, fog soft and flat. Clear daylight is unchanged. The game's own screen filter and the grade become one colour lookup per pixel, which makes the screen pass cheaper than the game's own (its invisible film grain is left out); the lookup table is rebuilt in the background when the weather or the hour moves it. Custom looks: .cube files named base, night, dawn, dusk, overcast, rain, storm, fog or snow in Zomboid/pzopt/luts. Windows and Linux (not on macOS, OpenGL 2.1)." },
+              tip = "The picture is colour graded by time of day and weather, like a film: nights shift towards the desaturated blue-green your eyes see in the dark (the Purkinje effect) while lamps and fires keep their colour, dawn is pink and cool in the shadows, the hour before dusk golden, overcast and rain greyer and cooler, storms dark and cold, fog soft and flat. Clear daylight is unchanged. The game's own screen filter and the grade become one colour lookup per pixel, which makes the screen pass cheaper than the game's own (its invisible film grain is left out); the lookup table is rebuilt in the background when the weather or the hour moves it. Custom looks: .cube files named base, night, dawn, dusk, overcast, rain, storm, fog or snow in Zomboid/pzopt/luts. Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default)." },
             { key = "colorGradingPct", label = "Colour grading: strength (%)",
               choices = { "25", "50", "75", "100", "130" }, note = { ["100"] = "default" },
               tip = "How strong the grade is. 0 would be the game's own colours." },
@@ -961,7 +986,7 @@ local ENHANCEMENT_SECTIONS = {
         title = "Per-pixel lighting (smooth light, torch and headlight beams drawn per pixel)", clip = "torch",
         entries = {
             { key = "pixelLight", label = "Per-pixel lighting",
-              tip = "The world's light is drawn per pixel instead of being painted into the chunk pictures square by square. The game's own lighting still decides how much light every square gets and what walls hide; the picture follows it smoothly between squares instead of in blocky steps, and a torch or headlight beam is drawn from its own cone, so it has straight edges and follows your aim every frame. A light change no longer redraws chunk pictures, which saves work when torches, headlights or lightning move the light. Nights look a little darker than stock: stock spreads every lit square's light half a square into its neighbours, even through walls. Windows and Linux (not on macOS, OpenGL 2.1). Applies on the next launch." },
+              tip = "The world's light is drawn per pixel instead of being painted into the chunk pictures square by square. The game's own lighting still decides how much light every square gets and what walls hide; the picture follows it smoothly between squares instead of in blocky steps, and a torch or headlight beam is drawn from its own cone, so it has straight edges and follows your aim every frame. A light change no longer redraws chunk pictures, which saves work when torches, headlights or lightning move the light. Nights look a little darker than stock: stock spreads every lit square's light half a square into its neighbours, even through walls. Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default). Applies on the next launch." },
             { key = "pplAnalytic", label = "Per-pixel lighting: torch, headlight, lamp and fire shapes",
               tip = "Torches and headlights drawn from their cone, lamps and fires from their round falloff, pixel by pixel. Off: the game's per-square light only, smoothed between squares." },
             { key = "pplPointLights", label = "Per-pixel lighting: lamp and fire shapes",
@@ -988,7 +1013,7 @@ local ENHANCEMENT_SECTIONS = {
         title = "Relief (parallax textures: bricks, stones, planks and shingles catch the light)", clip = "torch",
         entries = {
             { key = "relief", label = "Relief (parallax textures)",
-              tip = "The fine relief the art paints (mortar between bricks and stones, gaps between planks and floor tiles, roof shingles, cobbles) catches the light that moves: a low sun or the moon rakes it and the grooves fall into shade, a torch, headlight or lamp sweeping along a wall brings the stones out. The height is read once from each chunk picture after it is drawn (two bytes per pixel of video memory); the sun and the moon are baked into the picture with it and redone a few pictures a frame when they move a step, so they cost nothing per frame; a torch, headlight or lamp reads one byte where it shines. Floors and walls only: furniture keeps its painted shading. Sun and moon: needs Sun shadows. Torches, headlights and lamps: needs Per-pixel lighting. Windows and Linux (not on macOS, OpenGL 2.1). Applies on the next launch." },
+              tip = "The fine relief the art paints (mortar between bricks and stones, gaps between planks and floor tiles, roof shingles, cobbles) catches the light that moves: a low sun or the moon rakes it and the grooves fall into shade, a torch, headlight or lamp sweeping along a wall brings the stones out. The height is read once from each chunk picture after it is drawn (two bytes per pixel of video memory); the sun and the moon are baked into the picture with it and redone a few pictures a frame when they move a step, so they cost nothing per frame; a torch, headlight or lamp reads one byte where it shines. Floors and walls only: furniture keeps its painted shading. Sun and moon: needs Sun shadows. Torches, headlights and lamps: needs Per-pixel lighting. Windows, Linux and macOS (on a Mac with \"macOS: OpenGL 4.1\" on, the default). Applies on the next launch." },
             { key = "reliefDepthPct", label = "Relief: depth (%)",
               choices = { "50", "100", "150", "200" }, note = { ["150"] = "default" },
               tip = "How deep the grooves between bricks, planks and tiles are." },
@@ -1011,6 +1036,8 @@ local NEXT_LAUNCH_ONLY = { hdr = true, hdrAuto = true,
     -- reflections: the water, puddle and chunk composite shaders are patched when the game loads them (only then);
     -- strength and puddles apply at once
     reflections = true,
+    -- car glass: the vehicle shaders are patched when the game loads them (only then); its strengths apply at once
+    carGlass = true,
     -- relief: compiled into the chunk composite programs when the game loads them
     relief = true, reliefDepthPct = true, reliefSunPct = true, reliefTorchShadowSteps = true }
 for _, section in ipairs(ENHANCEMENT_SECTIONS) do
@@ -1325,6 +1352,7 @@ local PZOPT_SECTION_KEYS = {
     ["Ambient occlusion (soft shading in corners, along wall bases and under furniture)"] = "UI_pzopt_section_06b26a0de3",
     ["Sun, moon and cloud shadows (soft shadows of walls, trees, fences and furniture that follow the real sky)"] = "UI_pzopt_section_ce5912174d",
     ["Reflections (the scene mirrored in rivers, lakes and puddles)"] = "UI_pzopt_section_dfcb6917f3",
+    ["Car glass (windows that reflect the world and show the cabin)"] = "UI_pzopt_section_234a3cf217",
     ["Wet blood (fresh blood reflects and catches the light)"] = "UI_pzopt_section_bfd4569453",
     ["God rays (light shafts through windows, doorways, trees and fog)"] = "UI_pzopt_section_dea8523369",
     ["Foliage sway (grass, bushes and trees in the wind)"] = "UI_pzopt_section_7cafa6e5cf",
@@ -1560,7 +1588,7 @@ local KEY_CLIP = {
     bakeBudget = "drive", rebakeBudget = "drive", rebakeMaxFrames = "drive", treeBakeMaxChunksPerSec = "drive",
     bakeScheduler = "drive", bakeFrameBudget = "drive", bakeBudgetAdaptive = "drive", occlusionGrantedOnly = "drive", bakeMipLevels = "drive",
     renderChunkTopUp = "drive", fliesToggleFix = "drive",
-    translucentLightsPerFrame = "spin", curtainDepthNudgePct = "spin", treeBakePass = "spin", windSpriteSway = "drive", treeBakeDirect = "spin", roofHideDebounceFrames = "spin",
+    translucentLightsPerFrame = "spin", glassTilesPerFrame = "spin", curtainDepthNudgePct = "spin", treeBakePass = "spin", windSpriteSway = "drive", treeBakeDirect = "spin", roofHideDebounceFrames = "spin",
     overlaySampling = "overlay", overlay = "overlay", overlayLog = "overlay", overlayCorner = "overlay", overlayFont = "overlay", overlayTexture = "overlay", overlayRefreshMs = "overlay", overlayGraphHz = "ovgraph",
     gameThreadProfileHz = "ovtree", overlayStats = "ovstats", overlayPower = "ovstats", overlayTree = "ovtree", overlayVerdict = "ovverdict",
     overlayGraph = "ovgraph", overlayFlame = "ovflame", overlayFlameDepth = "ovflame",
@@ -1618,6 +1646,7 @@ local EFFECTS = {
     windowsInChunkTexture = { cpu = -2, render = -1, gpu = -1 },
     translucentTilesInChunkTexture = { cpu = -3, render = -2, gpu = -1 },
     translucentLightsPerFrame = {},
+    glassTilesPerFrame = {},
     curtainDepthNudgePct = {},
     bakeBudget = { cpu = -2 },
     bakeScheduler = { cpu = -1, render = -1, gpu = -1 },
@@ -1724,6 +1753,11 @@ local EFFECTS = {
     sunShadowRate = { render = 1, gpu = 1 },
     cloudShadows = { gpu = 1 },
     reflections = { gpu = 1, vram = 1 },
+    carGlass = { gpu = 1 },
+    carGlassReflectPct = {},
+    carGlassInteriorPct = {},
+    carGlassSunPct = {},
+    carGlassRainPct = {},
     bloodWet = { gpu = 1, cpu = 1 },
     bloodWetMinutes = { gpu = 1 },
     bloodReflectPct = {},
@@ -3654,7 +3688,7 @@ PAGES = {
         tab = ENHANCEMENTS_TAB, sections = ENHANCEMENT_SECTIONS,
         master = ENHANCEMENTS_MASTER, masterField = "pzoptEnhancementMaster", masterClip = "upscale",
         buttons = function(o, splitpoint, y)
-            addResetButton(o, splitpoint, y, "pzoptEnhancementOptions", pzoptTr("UI_pzopt_text_pzopt_optimizations_options_ab8fcd3dca", "Applies as soon as you press Apply; HDR output, per-pixel lighting and reflections on the next launch."), "pzoptEnhancementMaster")
+            addResetButton(o, splitpoint, y, "pzoptEnhancementOptions", pzoptTr("UI_pzopt_text_pzopt_optimizations_options_9b525c6742", "Applies as soon as you press Apply; HDR output, per-pixel lighting, reflections and car glass on the next launch."), "pzoptEnhancementMaster")
             addTransferButtons(o, splitpoint, y)
             addUpscalerDepsButton(o, splitpoint, y)
         end,
