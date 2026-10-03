@@ -1247,13 +1247,11 @@
   "UI_pzopt_label_edgeTestFast": "Zombies: fast wall / window / door test when they push apart",
   "UI_pzopt_tip_edgeTestFast": "Build 42.21 rewrote the test whether a wall, window or door lies between two squares round new edge objects, through layers of small function objects the Java compiler cannot inline. Zombies pushing each other apart ask it for every neighbour square every frame; the same test is now written out directly. Same result.",
   "UI_pzopt_label_driveTreeCutaway": "Trees: see-through round your car while driving (Build 42.21)",
-  "UI_pzopt_tip_driveTreeCutaway": "Build 42.21 counts driving as aiming for the tree cutaway: every tree whose base lies in the cutaway square round you turns see-through. On = as the game. Off (default) = Build 42.20's rule (only trees south-east of you, and while aiming); the 120 km/h drive is about 15-20 % faster at max zoom. The game's cutaway mask is drawn in only a few frames on Build 42.21, so the see-through trees rarely show either way.",
+  "UI_pzopt_tip_driveTreeCutaway": "Build 42.21 counts driving as aiming for the tree cutaway: every tree whose base lies in the cutaway square round you turns see-through. On = as the game. Off (default) = Build 42.20's rule (only trees south-east of you, and while aiming); the 120 km/h drive is about 15-20 % faster at max zoom.",
   "UI_pzopt_label_treeCutawayReach": "Trees: only trees reaching the cutaway leave the bake",
   "UI_pzopt_tip_treeCutawayReach": "The game makes a tree see-through when its base lies in the cutaway's square around you (while driving: every such tree), but only an ellipse in that square is cut away. A tree whose picture stays clear of the ellipse looks the same either way, so it stays in the chunk texture (no re-bake, no per-frame draw); its fade keeps running so it fades as before when it gets there. 120 km/h drive about a fifth faster.",
   "UI_pzopt_label_treeCutawayReachPx": "Trees: cutaway reach margin (pixels)",
   "UI_pzopt_tip_treeCutawayReachPx": "How far ahead of the cutaway ellipse a tree already leaves the chunk texture, so its re-bake is done before the ellipse reaches it.",
-  "UI_pzopt_label_treeCutawayScissor": "Trees: see-through passes only where the cutaway is",
-  "UI_pzopt_tip_treeCutawayScissor": "A see-through tree draws its faded and outlined passes only inside the cutaway; they are now clipped to the cutaway's box instead of covering the whole tree. Same picture, a little less GPU work.",
   "UI_pzopt_note_0ee3c0a984": "next frame",
   "UI_pzopt_text_optimizations_options_f2760cea66": "Against the stock game, from the measurements in docs/archive/2026-09-24/results.md: green = less load (or a shorter "
 }
