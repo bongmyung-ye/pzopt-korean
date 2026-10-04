@@ -1314,5 +1314,10 @@
   "UI_pzopt_label_torchSourceSelfShadow": "광원 자체의 빛: 자신의 몸이 그림자를 만듦",
   "UI_pzopt_tip_torchSourceSelfShadow": "픽셀 단위 조명 사용 시 자신의 몸이 들고 있는 빛을 가립니다. 한손에 든 랜턴은 몸 반대편을 부드러운 그림자로 남기고, 허리의 라이트는 몸 뒤쪽을 밝히지 않습니다. 몸 앞쪽으로 내민 광원은 자기 몸의 가림 판정을 하지 않습니다. 다음 실행부터 적용됩니다.",
   "UI_pzopt_note_0d6d61c32e": "기본값: 바라보는 방향",
-  "UI_pzopt_note_b2d1c4c310": "아이템이 향하는 방향 (손 움직임을 따라감)"
+  "UI_pzopt_note_b2d1c4c310": "아이템이 향하는 방향 (손 움직임을 따라감)",
+  "UI_pzopt_label_godRaysSoftPct": "갓레이: 가장자리 부드러움 (%%)",
+  "UI_pzopt_tip_godRaysSoftPct": "빛기둥과 햇빛 패치 가장자리의 부드러움을 정합니다. 창문에서 멀어질수록 빛이 조금씩 퍼져 단단한 선으로 끝나지 않고 자연스럽게 흐려집니다. 0이면 창틀 모양대로 선명하게 잘립니다.",
+  "UI_pzopt_label_godRaysGlintPct": "갓레이: 먼지 입자 반짝임 (%%)",
+  "UI_pzopt_tip_godRaysGlintPct": "빛기둥 속을 떠다니는 먼지 입자가 가끔 햇빛을 받아 반짝이는 강도를 정합니다.",
+  "UI_pzopt_note_ca0b6293f2": "선명"
 }
