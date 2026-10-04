@@ -1,4 +1,5 @@
 name=PZ_Optimization 한글패치 [B42]
 id=PZOptKorean
 author=bongmyung-ye
-description=Project Zomboid 42.21 / PZ_Optimization 6d23257f용 한국어 UI 번역. 원본 모드 별도 설치 필요.
+icon=icon.png
+description=Project Zomboid 42.21 / PZ_Optimization 0277de18용 한국어 UI 번역. 원본 모드 별도 설치 필요.

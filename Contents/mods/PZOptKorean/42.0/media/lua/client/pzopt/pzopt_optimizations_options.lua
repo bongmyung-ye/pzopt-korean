@@ -46,7 +46,7 @@ local MASTER = { key = "enabled", label = "Optimizations enabled (master switch)
 -- (Config's GATED list) while the choices below stay saved for when it is on again. Both apply at once; the features
 -- that pick their shaders or window at start-up (NEXT_LAUNCH_ONLY) follow on the next launch.
 local ENHANCEMENTS_MASTER = { key = "enhancementsEnabled", label = "Enhancements enabled (master switch)", live = true,
-  restartKeys = { "hdr", "hdrAuto", "pixelLight", "reflections", "carGlass" },
+  restartKeys = { "hdr", "hdrAuto", "pixelLight", "reflections", "carGlass", "mirrors" },
   tip = "Off = the picture is the stock game's: upscaling, sprite filtering, HDR output, ambient occlusion, sun shadows, reflections, car glass, the darkness floor, remembered places, colour grading, per-pixel lighting, god rays and foliage sway are all off, whatever the settings below say (they are kept for when you switch it on again). On = the settings below apply. HDR output, per-pixel lighting, reflections and car glass switch on the next launch." }
 local PROFILER_MASTER = { key = "profilerEnabled", label = "Profiler enabled (master switch)", live = true,
   tip = "Off = no performance overlay, no measuring and no frame log: the overlay's samplers never start and the toggle key only says the profiler is off, whatever the settings below say (they are kept for when you switch it on again). On = the settings below apply." }
@@ -578,7 +578,7 @@ local SECTIONS = {
         title = "Updates", clip = "load",
         entries = {
             { key = "updateCheck", label = "Offer new releases in the main menu",
-              tip = "Once per boot the main menu checks the release service once to see whether a newer build for this game revision exists. The \"PZ OPTIMIZATION UPDATE\" item between Credits and Exit is greyed out while the build is current and enabled when a newer one exists: it downloads the zip, replaces the installed files and asks to quit so the next launch loads them. Nothing is downloaded without that click. Applies on the next launch." },
+              tip = "Once per boot the main menu asks the GitHub releases (one request to api.github.com) whether a newer build for this game revision exists. The \"PZ OPTIMIZATION UPDATE\" item between Credits and Exit is greyed out while the build is current and enabled when a newer one exists: it downloads the zip, replaces the installed files and asks to quit so the next launch loads them. Nothing is downloaded without that click. Applies on the next launch." },
             { key = "updatePrefetch", label = "Get an offered update ready in the background",
               tip = "When the check finds a newer build, the files that differ from the installed ones are fetched right away (a release apart is usually a few files, tens of KB, read out of the release zip with range requests; the whole zip is never downloaded without the click), so Update now only writes them: a few milliseconds instead of downloading and unpacking 59 MB. Needs the first setting. Applies on the next launch." },
             { key = "updateFromWorkshop", label = "Update from the Steam Workshop copy",
@@ -953,6 +953,37 @@ local ENHANCEMENT_SECTIONS = {
         },
     },
     {
+        title = "Occluded zombie outlines (the hidden parts of the zombies you see)",
+        entries = {
+            { key = "occludedZombieOutlines", label = "Outline the hidden parts of zombies you see",
+              tip = "A zombie you can see that walks behind a wall, a tree, a fence or a car keeps a thin contour where the scenery hides it, so you know where it went. Only zombies your character sees right now (the same sight that draws them): no unseen or remembered zombies, nothing through the dark (the contour fades with the light on the zombie). The parts hidden behind other characters are not outlined. Next to nothing on a fast GPU: the zombies' own draws mark what they cover, then one pass draws the contour where they are hidden. Applies at once. Off while DLSS / TAAU object motion is on (it uses the same buffer bits)." },
+            { key = "occludedOutlineIgnorePlants", label = "Occluded outlines: ignore grass and bushes",
+              tip = "A zombie standing in grass or bushes, with nothing solid in front of it, does not get its legs outlined by the plants; a wall, a fence, a tree or a car further in front still outlines it." },
+            { key = "occludedOutlineWidth", label = "Occluded outlines: width (render pixels)",
+              choices = { "1", "2", "3", "4" }, note = { ["1"] = "default" },
+              tip = "The contour's width in pixels of the world picture (an upscaler draws them larger). Only the zombie's own outline is drawn, never a line along the edge of what hides it." },
+            { key = "occludedOutlineColour", label = "Occluded outlines: colour", colour = true,
+              tip = "Pick the contour colour, then press Apply. The aiming and interaction outlines keep theirs." },
+            { key = "occludedOutlineOpacityPct", label = "Occluded outlines: opacity (%)",
+              choices = { "25", "50", "70", "100" }, note = { ["70"] = "default" },
+              tip = "How opaque the contour is in daylight; dimmer in the dark and while the zombie fades in or out of sight." },
+        },
+    },
+    {
+        title = "Mirrors and windows (real reflections)", clip = "hdr",
+        entries = {
+            { key = "mirrors", label = "Mirror and window reflections",
+              tip = "Wall mirrors, mirrored medicine cabinets and dressers, and window panes reflect what stands in front of them: the floor and the room, the street, and you, the zombies and the cars as their real other side (the game's own models drawn once more through the mirror's plane, lit as they are lit), so a mirror shows your face, not your back. From the game's high camera a wall mirror shows the floor and whoever stands within a couple of squares of it; a window upstairs shows the street below. Someone inside a room seen through a window keeps the reflection over them, as glass does; a closed curtain stops it. The room part of each pane's reflection is worked out once and kept while nothing changes (the camera's pan does not change it), panes hidden under a roof or behind a building are skipped, and the people in it are redrawn at most 120 times a second: a few hundredths of a millisecond a frame for a street of windows on a fast GPU, nothing when no mirror or window is on screen. Applies on the next launch (mirror tiles are drawn on their own instead of into the chunk pictures)." },
+            { key = "mirrorsWindows", label = "Mirrors: windows reflect too",
+              tip = "On: window panes reflect as well (subtly, as glass does). Off: only wall mirrors. Applies on the next launch." },
+            { key = "mirrorsWindowPct", label = "Mirrors: window reflection strength (%)",
+              choices = { "15", "30", "50", "70" }, note = { ["30"] = "default" },
+              tip = "How much of a window pane is its reflection. Real glass reflects a few percent head-on, more where the room behind it is dark; higher reads more like a shop window by day. Applies on the next launch." },
+            { key = "mirrorsModels", label = "Mirrors: people and cars in the reflection",
+              tip = "On: characters and vehicles in front of a mirror or window are drawn once more through its plane, so the mirror shows their faces and the side of the car facing it. Off: the reflection is made of what the camera sees (cheaper; you see their backs). Applies on the next launch." },
+        },
+    },
+    {
         title = "Wet blood (fresh blood reflects and catches the light)", clip = "hdr",
         entries = {
             { key = "bloodWet", label = "Wet blood",
@@ -1062,6 +1093,18 @@ local ENHANCEMENT_SECTIONS = {
         },
     },
     {
+        title = "Light from the torch itself (flashlights, lanterns and weapon lights shine from the item you carry)", clip = "torch",
+        entries = {
+            { key = "torchSource", label = "Light from the torch itself",
+              tip = "A flashlight, lantern, lighter or weapon light shines from the item in your hand, on your webbing or under your gun barrel, at its height, instead of from the middle of your feet: the beam starts at the lens and moves with your arm, a lantern held at your side lights that side, and with Per-pixel lighting the beam, its shadows, the glow in fog and the shadows other people cast from it all start there too. The game's own square-by-square lighting starts from the same spot (never through a wall) and holds still while you stand still. Costs a few microseconds a frame. Applies at once." },
+            { key = "torchSourceAim", label = "Light from the torch itself: beam direction",
+              choices = { "look", "item" }, note = { look = "default: where you look", item = "where the item points (follows your hand)" },
+              tip = "Where the beam points. Where you look (the game's own) keeps the beam steady on your aim; where the item points makes it follow the flashlight in your hand as you walk and turn, and a flashlight tilted down lights the ground nearer (with Per-pixel lighting)." },
+            { key = "torchSourceSelfShadow", label = "Light from the torch itself: your body casts a shadow",
+              tip = "With Per-pixel lighting: your own body shades the light you carry, so a lantern in one hand leaves the other side of you in a soft shadow, and a light at your hip does not light what is behind you. A torch held out in front is never tested. Applies on the next launch." },
+        },
+    },
+    {
         title = "Relief (parallax textures: bricks, stones, planks and shingles catch the light)", clip = "torch",
         entries = {
             { key = "relief", label = "Relief (parallax textures)",
@@ -1084,12 +1127,14 @@ local ENHANCEMENT_SECTIONS = {
 local NEXT_LAUNCH_ONLY = { hdr = true, hdrAuto = true, carOccupant = true, carOccupantOcclusion = true, carOccupantLightPct = true,
     -- per-pixel lighting: read once at start-up (the chunk composite shader is patched when the game loads it)
     pixelLight = true, pplAnalytic = true, pplPointLights = true, pplNormals = true, pplWrapPct = true, pplSmooth = true,
-    pplWetSpecular = true, pplSpecPct = true, pplShadows = true,
+    pplWetSpecular = true, pplSpecPct = true, pplShadows = true, torchSourceSelfShadow = true,
     -- reflections: the water, puddle and chunk composite shaders are patched when the game loads them (only then);
     -- strength and puddles apply at once
     reflections = true,
     -- car glass: the vehicle shaders are patched when the game loads them (only then); its strengths apply at once
     carGlass = true,
+    -- mirrors: mirror tiles leave the chunk pictures at start-up; the settings are read once
+    mirrors = true, mirrorsWindows = true, mirrorsWindowPct = true, mirrorsModels = true,
     -- relief: compiled into the chunk composite programs when the game loads them
     relief = true, reliefDepthPct = true, reliefSunPct = true, reliefTorchShadowSteps = true }
 for _, section in ipairs(ENHANCEMENT_SECTIONS) do
@@ -1392,6 +1437,8 @@ local PZOPT_NOTE_KEYS = {
     ["integral control on the GPU time"] = "UI_pzopt_note_a06f83acf6",
     ["the classic engine rule: drop at once, creep back up"] = "UI_pzopt_note_72c0d323db",
     ["empty cars"] = "UI_pzopt_note_3c773dc6ff",
+    ["default: where you look"] = "UI_pzopt_note_0d6d61c32e",
+    ["where the item points (follows your hand)"] = "UI_pzopt_note_b2d1c4c310",
 }
 local PZOPT_SECTION_KEYS = {
     ["Chunk textures: what bakes"] = "UI_pzopt_section_01",
@@ -1421,11 +1468,14 @@ local PZOPT_SECTION_KEYS = {
     ["Sun, moon and cloud shadows (soft shadows of walls, trees, fences and furniture that follow the real sky)"] = "UI_pzopt_section_ce5912174d",
     ["Reflections (the scene mirrored in rivers, lakes and puddles)"] = "UI_pzopt_section_dfcb6917f3",
     ["Car glass (windows that reflect the world and show the cabin)"] = "UI_pzopt_section_234a3cf217",
+    ["Occluded zombie outlines (the hidden parts of the zombies you see)"] = "UI_pzopt_section_95a73be78d",
+    ["Mirrors and windows (real reflections)"] = "UI_pzopt_section_54e7de8138",
     ["Wet blood (fresh blood reflects and catches the light)"] = "UI_pzopt_section_bfd4569453",
     ["God rays (light shafts through windows, doorways, trees and fog)"] = "UI_pzopt_section_dea8523369",
     ["Foliage sway (grass, bushes and trees in the wind)"] = "UI_pzopt_section_7cafa6e5cf",
     ["Darkness, remembered places and colour grading"] = "UI_pzopt_section_2822ae7ee0",
     ["Per-pixel lighting (smooth light, torch and headlight beams drawn per pixel)"] = "UI_pzopt_section_123e163628",
+    ["Light from the torch itself (flashlights, lanterns and weapon lights shine from the item you carry)"] = "UI_pzopt_section_4651ac0f1e",
     ["Performance overlay (F9 or the \"Toggle performance overlay\" key binding; L3 + R3 on a controller)"] = "UI_pzopt_section_8f8fc9b06c",
     ["Performance overlay: fps colour"] = "UI_pzopt_section_09",
     ["Menus, inventory and map (UI)"] = "UI_pzopt_section_b06ab025e0",
@@ -1653,7 +1703,7 @@ local KEY_CLIP = {
     fogPass = "fog", fogScalePct = "fog", fogMaskFrames = "fog",
     fsrSharpnessPct = "fsrzoom", dlssWaterCurrent = "dlss", dlssWaterHistoryPct = "dlss", dlssPreset = "dlss", dlssOutputPct = "dlss", dlssOutputFilter = "dlsszoom", dlssSharpen = "dlsszoom",
     hdrSunPct = "hdrday", hdrGlintPct = "hdrday",
-    pixelLight = "torch", pplAnalytic = "torch", pplNormals = "torch", pplWrapPct = "torch", pplShadows = "torch", pplTorchFeetGlow = "torch", pplSmooth = "torch", pplPointLights = "torch", pplWetSpecular = "storm", pplSpecPct = "storm",
+    pixelLight = "torch", pplAnalytic = "torch", pplNormals = "torch", pplWrapPct = "torch", pplShadows = "torch", pplTorchFeetGlow = "torch", torchSource = "torch", torchSourceAim = "torch", torchSourceSelfShadow = "torch", pplSmooth = "torch", pplPointLights = "torch", pplWetSpecular = "storm", pplSpecPct = "storm",
     lightingStrongDelta = "torch", lightingStrongBudget = "horde", lightingStrongFrameMs = "horde", lightingFlush = "torch", lightingBudget = "torch",
     audioLimiter = "horde", audioLimiterCeilingDb = "horde", audioLimiterStereoFold = "horde", soundTickHz = "horde", emitterIdleSkip = "horde", worldSoundCleanupFast = "horde", hearingHoist = "horde",
     lightSwitchCheckFrames = "horde", soundZoneCache = "horde", worldSoundFast = "horde", gridStackInterval = "horde",
@@ -1843,6 +1893,10 @@ local EFFECTS = {
     cloudShadows = { gpu = 1 },
     reflections = { gpu = 1, vram = 1 },
     carGlass = { gpu = 1 },
+    mirrors = { gpu = 1, vram = 1, render = 1 },
+    mirrorsWindows = { gpu = 1 },
+    mirrorsWindowPct = {},
+    mirrorsModels = { gpu = 1, render = 1 },
     carGlassReflectPct = {},
     carGlassInteriorPct = {},
     carGlassSunPct = {},
@@ -1850,6 +1904,11 @@ local EFFECTS = {
     carOccupant = { render = 1 },
     carOccupantOcclusion = {},
     carOccupantLightPct = {},
+    occludedZombieOutlines = {},
+    occludedOutlineIgnorePlants = {},
+    occludedOutlineWidth = {},
+    occludedOutlineColour = {},
+    occludedOutlineOpacityPct = {},
     bloodWet = { gpu = 1, cpu = 1 },
     bloodWetMinutes = { gpu = 1 },
     bloodReflectPct = {},
@@ -1869,6 +1928,9 @@ local EFFECTS = {
     pplPointLights = { gpu = 1 },
     pplShadows = { gpu = 2 },
     pplTorchFeetGlow = {},
+    torchSource = {},
+    torchSourceAim = {},
+    torchSourceSelfShadow = {},
     aoScalePct = { gpu = 1, vram = 1 },
     vrr = { gpu = -1, cpu = -1 },
     vrrCap = { gpu = -1, cpu = -1 },
@@ -2903,6 +2965,120 @@ local function addBoolOption(self, entry, splitpoint, y, BUTTON_HGT)
     return option
 end
 
+-- Colour controls store RGB hex; opacity remains a separate setting.
+local function colourHex(value)
+    return string.upper((value or ""):match("^%s*#?(%x%x%x%x%x%x)%s*$") or "FFC740")
+end
+
+local function colourRGB(value)
+    local hex = colourHex(value)
+    return {
+        r = tonumber(hex:sub(1, 2), 16) / 255,
+        g = tonumber(hex:sub(3, 4), 16) / 255,
+        b = tonumber(hex:sub(5, 6), 16) / 255,
+        a = 1,
+    }
+end
+
+local function addColourOption(self, entry, splitpoint, y)
+    local p = perf()
+    local pinnedBy = p:getPzoptOptionPinnedBy(entry.key)
+    local option
+    local function setValue(value)
+        local button = option.control
+        button.pzoptValue = value == "" and "" or colourHex(value)
+        button.backgroundColor = colourRGB(value ~= "" and value or p:getPzoptOptionDefault(entry.key))
+        button.backgroundColorMouseOver = button.backgroundColor
+    end
+    local function openPicker(screen, button)
+        if pinnedBy ~= "" then
+            return
+        end
+        require("ISUI/ISSliderPanel")
+        require("ISUI/ISColorPickerHSB")
+        if screen.pzoptColourPicker then
+            screen.pzoptColourPicker:removeSelf()
+        end
+        local rgb = button.backgroundColor
+        local picker = ISColorPickerHSB:new(0, 0, ColorInfo.new(rgb.r, rgb.g, rgb.b, 1))
+        picker:initialise()
+        picker.resetFocusTo = button.parent
+        picker:setPickedFunc(function(_, colour)
+            local function channel(value)
+                return math.floor(math.max(0, math.min(1, value)) * 255 + 0.5)
+            end
+            setValue(string.format("%02X%02X%02X", channel(colour.r), channel(colour.g), channel(colour.b)))
+            option:invokeOnChangeEvent()
+            if picker.parent then
+                picker:removeSelf()
+            end
+        end)
+        local removeSelf = picker.removeSelf
+        picker.removeSelf = function(o)
+            screen.pzoptColourPicker = nil
+            removeSelf(o)
+        end
+        -- The popup belongs to the options screen, not the scrolling settings panel.
+        local prerender = picker.prerender
+        picker.prerender = function(o)
+            if not button:getIsVisible() or not button.parent:getIsVisible() then
+                o:removeSelf()
+                return
+            end
+            prerender(o)
+        end
+        screen:addChild(picker)
+        local x = button:getAbsoluteX() - screen:getAbsoluteX()
+        local top = button:getAbsoluteY() - screen:getAbsoluteY()
+        local py = top + button:getHeight() + 1
+        if py + picker:getHeight() > screen:getHeight() then
+            py = top - picker:getHeight() - 1
+        end
+        picker:setX(math.max(0, math.min(x, screen:getWidth() - picker:getWidth())))
+        picker:setY(math.max(0, py))
+        picker:setCapture(true)
+        picker:setVisible(true)
+        picker:bringToTop()
+        screen.pzoptColourPicker = picker
+        local joypad = JoypadState.getMainMenuJoypad()
+        if joypad then
+            joypad.focus = picker
+        end
+    end
+    local button = self:addColorButton(splitpoint, y, entry.label, colourRGB(""), openPicker)
+    button.tooltip = tooltipFor(entry, pinnedBy)
+    button:setEnable(pinnedBy == "")
+    option = GameOption:new("pzopt." .. entry.key, button)
+    function option.toUI()
+        setValue(pinnedBy ~= "" and p:getPzoptOption(entry.key) or p:getPzoptOptionSaved(entry.key))
+    end
+    function option.apply(o)
+        if pinnedBy ~= "" then
+            return
+        end
+        local value = o.control.pzoptValue
+        p:setPzoptOption(entry.key, value)
+        afterStore(o, entry, value ~= "" and value or p:getPzoptOptionDefault(entry.key))
+    end
+    function option.pzoptReset()
+        if pinnedBy == "" then
+            setValue("")
+        end
+    end
+    function option.pzoptSet(_, value)
+        if pinnedBy == "" then
+            setValue(value or "")
+        end
+    end
+    function option.pzoptCurrent(o)
+        return o.control.pzoptValue ~= "" and ("#" .. o.control.pzoptValue)
+            or ("#" .. colourHex(p:getPzoptOptionDefault(entry.key)) .. " (" .. pzoptTr("UI_pzopt_note_7505d64a54", "default") .. ")")
+    end
+    option.pzoptKey = entry.key
+    self.gameOptions:add(option)
+    return option
+end
+
 local function addIntOption(self, entry, splitpoint, y, comboWidth)
     local p = perf()
     local pinnedBy = p:getPzoptOptionPinnedBy(entry.key)
@@ -3891,6 +4067,9 @@ local function buildSettingsPage(self, page)
                     if entry.bezier then
                         return addBezierOption(self, entry, splitpoint, y, comboWidth, BUTTON_HGT)
                     end
+                    if entry.colour then
+                        return addColourOption(self, entry, splitpoint, y)
+                    end
                     if entry.choices then
                         return addIntOption(self, entry, splitpoint, y, comboWidth)
                     end
@@ -4128,6 +4307,7 @@ local function install()
         end
         stockSetVisible(self, bVisible, ...)
         if not bVisible then
+            if self.pzoptColourPicker then self.pzoptColourPicker:removeSelf() end
             pcall(function() getPerformance():releasePzoptGifs() end)
         end
     end
