@@ -176,7 +176,7 @@ local function body()
     local d = parse(perf():getPzoptModCompatDetails())
     local t = ""
     if d.mode == "off" then
-        return pzoptTr("UI_pzopt_text_pzopt_mainscreen_compat_bd524127c1", "The check is off (Options > Optimizations > Mod compatibility > Java mods: off), so no mod was read at this launch. ")
+        return pzoptTr("UI_pzopt_text_pzopt_mainscreen_compat_bd524127c1", "The check is off (Options > PZ Optimization > System, sound and mods > Mods and multiplayer > Java mods: off), so no mod was read at this launch. ")
             .. pzoptTr("UI_pzopt_text_pzopt_mainscreen_compat_132b12dfc8", "Set it to auto and restart the game to see what your mods change.")
     end
     local switched = {}
