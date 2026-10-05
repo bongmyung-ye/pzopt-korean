@@ -4032,6 +4032,8 @@ end
 -- ---------------------------------------------------------------------------------------------------
 -- relayout: the page in NAV
 
+local layoutPage = {} -- the page kinds' content (below relayout)
+
 relayout = function(S)
     local G, panel = S.G, S.panel
     local hS, hM, hL, BH, SP = G.hS, G.hM, G.hL, G.BH, G.SP
@@ -4132,230 +4134,9 @@ relayout = function(S)
     y = y + SP * 2 + 4
     local contentLine = #joy + 1
 
-    if home then
-        -- presets (wrapping to a second row on a narrow window)
-        at(S.presetLabel, x0, y)
-        local px0 = x0 + S.presetLabel.elems[1].el:getWidth() + 16
-        local px = px0
-        local pl = {}
-        for _, b in ipairs(S.presetButtons) do
-            local bw = b.elems[1].el:getWidth()
-            if px + bw > x1 and px > px0 then
-                line(unpack(pl))
-                pl = {}
-                px = px0
-                y = y + BH + SP
-            end
-            local el = at(b, px, y)
-            px = px + bw + 8
-            table.insert(pl, el)
-        end
-        line(unpack(pl))
-        y = y + BH + SP * 3
-        local cols = w >= 1800 and 4 or (w >= 1150 and 3 or 2)
-        local tileW = math.floor((w - (cols - 1) * 12) / cols)
-        local tileH = hM + 3 * hS + 34
-        for _, g in ipairs(S.tree.groups) do
-            at(g.heading, x0, y, w, hM + 6)
-            y = y + hM + 6 + SP
-            if g.master then
-                rowAt(g.master, y, x0 - G.contentX)
-                if g.reset then
-                    local el = at(g.reset, 0, y)
-                    el:setX(x1 - el:getWidth())
-                    table.insert(joy[#joy], el)
-                end
-                y = y + g.master.step + SP
-            end
-            local col = 0
-            local tl = {}
-            for _, cat in ipairs(g.cats) do
-                table.insert(tl, at(cat.tile, x0 + col * (tileW + 12), y, tileW, tileH))
-                col = col + 1
-                if col == cols then
-                    col = 0
-                    y = y + tileH + 12
-                    line(unpack(tl))
-                    tl = {}
-                end
-            end
-            if col ~= 0 then
-                y = y + tileH + 12
-                line(unpack(tl))
-            end
-            y = y + SP * 3
-        end
-        at(S.helpHeading, x0, y, w, hM + 6)
-        y = y + hM + 6 + SP
-        line(at(S.problemTile, x0, y, tileW, tileH))
-        y = y + tileH + SP * 4
-        rule(y)
-        y = y + SP * 2
-        local bx = x0
-        local bl = {}
-        for _, b in ipairs(S.toolButtons) do
-            local el = at(b, bx, y)
-            bx = bx + el:getWidth() + 8
-            table.insert(bl, el)
-        end
-        line(unpack(bl))
-        y = y + BH + SP
-        local noteH = #wrapLines(UIFont.Small, S.homeNoteText, w) * hS + 4
-        at(S.homeNote, x0, y, w, noteH)
-        y = y + noteH
-
-    elseif kind == "cat" then
-        local cat = S.tree.catById[NAV.cat]
-        local g = cat.group
-        local headH = hL + hS + 10 + (groupOff(g) and (hS + 6) or 0)
-        S.catHead.elems[1].el.cat = cat
-        at(S.catHead, x0, y, w, headH)
-        y = y + headH + SP
-        -- the subcategory tabs (wrapping when they do not fit)
-        local tabX, tl = x0, {}
-        for i, t in ipairs(cat.tabs) do
-            local el = t.elems[1].el
-            if tabX + el:getWidth() > x1 and tabX > x0 then
-                line(unpack(tl))
-                tl = {}
-                tabX = x0
-                y = y + hM + 14
-            end
-            at(t, tabX, y)
-            tabX = tabX + el:getWidth() + 4
-            table.insert(tl, el)
-            if i == 1 then tabX = tabX + 8 end
-        end
-        line(unpack(tl))
-        y = y + hM + 14
-        at(S.tabRule, x0, y - 2, w, 1)
-        y = y + SP * 3
-        if NAV.sub == 0 then
-            for _, sub in ipairs(cat.subs) do
-                local rows = visibleRows(sub.rows, NAV.level)
-                local hidden = #sub.rows - #rows
-                if g.cards then
-                    -- a card: title, what it is, cost; its settings inside; "All N settings" opens its tab
-                    local cardY = y
-                    local headH2 = hM + hS + 22
-                    local card = at(sub.card, x0, cardY, w, 10)
-                    local ob = at(sub.open, 0, cardY + 10)
-                    ob:setX(x1 - 12 - ob:getWidth())
-                    line(ob)
-                    local ry = cardY + headH2
-                    if sub.dlssRow then ry = rowAt(sub.dlssRow, ry, 16) end
-                    for _, row in ipairs(rows) do ry = rowAt(row, ry, 16) end
-                    card:setHeight(ry - cardY + 8)
-                    y = ry + 8 + SP * 3
-                else
-                    local hb = at(sub.head, x0, y, w, hM + 8)
-                    sub.headHidden = hidden
-                    line(hb)
-                    y = y + hM + 8 + SP
-                    for _, row in ipairs(rows) do y = rowAt(row, y) end
-                    y = y + SP * 3
-                end
-            end
-        else
-            local sub = cat.subs[NAV.sub]
-            if sub then
-                if sub.dlssRow then y = rowAt(sub.dlssRow, y) end
-                local rows = visibleRows(sub.rows, NAV.level)
-                for _, row in ipairs(rows) do y = rowAt(row, y) end
-                local hidden = #sub.rows - #rows
-                if hidden > 0 then
-                    y = y + SP * 2
-                    local next = NAV.level == "simple" and pzoptTr("UI_pzopt_text_pzopt_optimizations_options_4d06472695", "Advanced") or pzoptTr("UI_pzopt_text_pzopt_optimizations_options_4a66d14807", "Everything")
-                    local el = at(S.moreButton, x0, y)
-                    el:setTitle(hidden == 1
-                        and pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_1bfc34c05f", "Show {hidden} more setting ({view} view)", { hidden = hidden, view = next })
-                        or pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_baa8678af9", "Show {hidden} more settings ({view} view)", { hidden = hidden, view = next }))
-                    el:setWidthToTitle()
-                    line(el)
-                    y = y + BH + SP
-                end
-            end
-        end
-        y = y + SP * 2
-        rule(y)
-        y = y + SP * 2
-        local rb = at(S.catReset, x0, y)
-        rb:setTitle(pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_19372d6477", "Reset {cat} to defaults", { cat = cat.title }))
-        rb:setWidthToTitle()
-        line(rb)
-        S.catNote.elems[1].el.text = PAGES[g.page].footer
-        at(S.catNote, x0 + rb:getWidth() + 16, y + math.floor((BH - hS) / 2), x1 - x0 - rb:getWidth() - 16, hS + 2)
-        y = y + BH + SP
-
-    elseif kind == "problems" then
-        at(S.probHead, x0, y, w, hL + hS + 10)
-        y = y + hL + hS + 10 + SP * 2
-        local cols = w >= 1300 and 3 or 2
-        local tileW = math.floor((w - (cols - 1) * 10) / cols)
-        local tileH = hM + 2 * hS + 26
-        local col, tl = 0, {}
-        for _, pr in ipairs(S.tree.problems) do
-            table.insert(tl, at(pr.tile, x0 + col * (tileW + 10), y, tileW, tileH))
-            col = col + 1
-            if col == cols then
-                col = 0
-                y = y + tileH + 10
-                line(unpack(tl))
-                tl = {}
-            end
-        end
-        if col ~= 0 then
-            y = y + tileH + 10
-            line(unpack(tl))
-        end
-        y = y + SP * 3
-        local pr = S.tree.problems[NAV.problem] or S.tree.problems[1]
-        if pr then
-            local lines = wrapLines(UIFont.Small, pr.why, w - 56)
-            local whyH = hM + 16 + #lines * hS + 12
-            S.probWhy.elems[1].el.problem, S.probWhy.elems[1].el.lines = pr, lines
-            at(S.probWhy, x0, y, w, whyH)
-            y = y + whyH + SP * 2
-            for _, row in ipairs(pr.rows) do y = rowAt(row, y) end
-        end
-
-    elseif kind == "search" then
-        S.searchHead.elems[1].el.text = (S.hitCount or 0) > 0
-            and (S.hitCount == 1
-                and pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_766b975a76", "1 setting matches \"{query}\", best first", { query = S.query or "" })
-                or pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_e21b8a17fc", "{hit} settings match \"{query}\", best first", { hit = S.hitCount, query = S.query or "" }))
-            or pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_0126bd1352", "Nothing matches \"{query}\"", { query = S.query or "" })
-        at(S.searchHead, x0, y, w, hM + 6)
-        y = y + hM + 6 + SP * 2
-        local hits = S.hits or {}
-        -- the categories by their best match, the matches inside by score
-        local cats = {}
-        for _, g in ipairs(S.tree.groups) do
-            for _, cat in ipairs(g.cats) do
-                local list, best = {}, 0
-                for _, row in ipairs(cat.rows) do
-                    local s = hits[row]
-                    if s then
-                        table.insert(list, row)
-                        if s > best then best = s end
-                    end
-                end
-                if #list > 0 then
-                    table.sort(list, function(a, b)
-                        if hits[a] ~= hits[b] then return hits[a] > hits[b] end
-                        return a.index < b.index
-                    end)
-                    table.insert(cats, { cat = cat, rows = list, best = best })
-                end
-            end
-        end
-        table.sort(cats, function(a, b) return a.best > b.best end)
-        for _, c in ipairs(cats) do
-            at(c.cat.resultHead, x0, y, w, hS + 8)
-            y = y + hS + 8 + SP
-            for _, row in ipairs(c.rows) do y = rowAt(row, y) end
-            y = y + SP * 2
-        end
+    local page = layoutPage[kind]
+    if page then
+        y = page({ S = S, G = G, x0 = x0, x1 = x1, w = w, joy = joy, line = line, rowAt = rowAt, at = at, rule = rule }, y)
     end
 
     -- the sidebar and the preview: on every page but home; the preview shows a setting of the page shown
@@ -4398,84 +4179,267 @@ relayout = function(S)
     S.layoutGen = (S.layoutGen or 0) + 1 -- cullRows looks again
 end
 
+-- The content of each page kind below the header, one function each: the game's Lua compiler fails a function that
+-- declares more than 200 locals in a -debug game (Core.debug records each local's line in a 200-slot array indexed by
+-- every local declared so far), and relayout with all four pages inline declared 201 (issue #58, 2026-10-04;
+-- scripts/LuaDebugCompile.java checks it in build.sh). C = the page geometry and relayout's placing helpers; each
+-- returns the y under its content.
+function layoutPage.home(C, y)
+    local S, G, x0, x1, w, joy = C.S, C.G, C.x0, C.x1, C.w, C.joy
+    local at, line, rowAt, rule = C.at, C.line, C.rowAt, C.rule
+    local hS, hM, BH, SP = G.hS, G.hM, G.BH, G.SP
+    -- presets (wrapping to a second row on a narrow window)
+    at(S.presetLabel, x0, y)
+    local px0 = x0 + S.presetLabel.elems[1].el:getWidth() + 16
+    local px = px0
+    local pl = {}
+    for _, b in ipairs(S.presetButtons) do
+        local bw = b.elems[1].el:getWidth()
+        if px + bw > x1 and px > px0 then
+            line(unpack(pl))
+            pl = {}
+            px = px0
+            y = y + BH + SP
+        end
+        local el = at(b, px, y)
+        px = px + bw + 8
+        table.insert(pl, el)
+    end
+    line(unpack(pl))
+    y = y + BH + SP * 3
+    local cols = w >= 1800 and 4 or (w >= 1150 and 3 or 2)
+    local tileW = math.floor((w - (cols - 1) * 12) / cols)
+    local tileH = hM + 3 * hS + 34
+    for _, g in ipairs(S.tree.groups) do
+        at(g.heading, x0, y, w, hM + 6)
+        y = y + hM + 6 + SP
+        if g.master then
+            rowAt(g.master, y, x0 - G.contentX)
+            if g.reset then
+                local el = at(g.reset, 0, y)
+                el:setX(x1 - el:getWidth())
+                table.insert(joy[#joy], el)
+            end
+            y = y + g.master.step + SP
+        end
+        local col = 0
+        local tl = {}
+        for _, cat in ipairs(g.cats) do
+            table.insert(tl, at(cat.tile, x0 + col * (tileW + 12), y, tileW, tileH))
+            col = col + 1
+            if col == cols then
+                col = 0
+                y = y + tileH + 12
+                line(unpack(tl))
+                tl = {}
+            end
+        end
+        if col ~= 0 then
+            y = y + tileH + 12
+            line(unpack(tl))
+        end
+        y = y + SP * 3
+    end
+    at(S.helpHeading, x0, y, w, hM + 6)
+    y = y + hM + 6 + SP
+    line(at(S.problemTile, x0, y, tileW, tileH))
+    y = y + tileH + SP * 4
+    rule(y)
+    y = y + SP * 2
+    local bx = x0
+    local bl = {}
+    for _, b in ipairs(S.toolButtons) do
+        local el = at(b, bx, y)
+        bx = bx + el:getWidth() + 8
+        table.insert(bl, el)
+    end
+    line(unpack(bl))
+    y = y + BH + SP
+    local noteH = #wrapLines(UIFont.Small, S.homeNoteText, w) * hS + 4
+    at(S.homeNote, x0, y, w, noteH)
+    y = y + noteH
+    return y
+end
+
+function layoutPage.cat(C, y)
+    local S, x0, x1, w = C.S, C.x0, C.x1, C.w
+    local at, line, rowAt, rule = C.at, C.line, C.rowAt, C.rule
+    local hS, hM, hL, BH, SP = C.G.hS, C.G.hM, C.G.hL, C.G.BH, C.G.SP
+    local cat = S.tree.catById[NAV.cat]
+    local g = cat.group
+    local headH = hL + hS + 10 + (groupOff(g) and (hS + 6) or 0)
+    S.catHead.elems[1].el.cat = cat
+    at(S.catHead, x0, y, w, headH)
+    y = y + headH + SP
+    -- the subcategory tabs (wrapping when they do not fit)
+    local tabX, tl = x0, {}
+    for i, t in ipairs(cat.tabs) do
+        local el = t.elems[1].el
+        if tabX + el:getWidth() > x1 and tabX > x0 then
+            line(unpack(tl))
+            tl = {}
+            tabX = x0
+            y = y + hM + 14
+        end
+        at(t, tabX, y)
+        tabX = tabX + el:getWidth() + 4
+        table.insert(tl, el)
+        if i == 1 then tabX = tabX + 8 end
+    end
+    line(unpack(tl))
+    y = y + hM + 14
+    at(S.tabRule, x0, y - 2, w, 1)
+    y = y + SP * 3
+    if NAV.sub == 0 then
+        for _, sub in ipairs(cat.subs) do
+            local rows = visibleRows(sub.rows, NAV.level)
+            local hidden = #sub.rows - #rows
+            if g.cards then
+                -- a card: title, what it is, cost; its settings inside; "All N settings" opens its tab
+                local cardY = y
+                local headH2 = hM + hS + 22
+                local card = at(sub.card, x0, cardY, w, 10)
+                local ob = at(sub.open, 0, cardY + 10)
+                ob:setX(x1 - 12 - ob:getWidth())
+                line(ob)
+                local ry = cardY + headH2
+                if sub.dlssRow then ry = rowAt(sub.dlssRow, ry, 16) end
+                for _, row in ipairs(rows) do ry = rowAt(row, ry, 16) end
+                card:setHeight(ry - cardY + 8)
+                y = ry + 8 + SP * 3
+            else
+                local hb = at(sub.head, x0, y, w, hM + 8)
+                sub.headHidden = hidden
+                line(hb)
+                y = y + hM + 8 + SP
+                for _, row in ipairs(rows) do y = rowAt(row, y) end
+                y = y + SP * 3
+            end
+        end
+    else
+        local sub = cat.subs[NAV.sub]
+        if sub then
+            if sub.dlssRow then y = rowAt(sub.dlssRow, y) end
+            local rows = visibleRows(sub.rows, NAV.level)
+            for _, row in ipairs(rows) do y = rowAt(row, y) end
+            local hidden = #sub.rows - #rows
+            if hidden > 0 then
+                y = y + SP * 2
+                local next = NAV.level == "simple" and pzoptTr("UI_pzopt_text_pzopt_optimizations_options_4d06472695", "Advanced") or pzoptTr("UI_pzopt_text_pzopt_optimizations_options_4a66d14807", "Everything")
+                local el = at(S.moreButton, x0, y)
+                el:setTitle(hidden == 1
+                    and pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_1bfc34c05f", "Show {hidden} more setting ({view} view)", { hidden = hidden, view = next })
+                    or pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_baa8678af9", "Show {hidden} more settings ({view} view)", { hidden = hidden, view = next }))
+                el:setWidthToTitle()
+                line(el)
+                y = y + BH + SP
+            end
+        end
+    end
+    y = y + SP * 2
+    rule(y)
+    y = y + SP * 2
+    local rb = at(S.catReset, x0, y)
+    rb:setTitle(pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_19372d6477", "Reset {cat} to defaults", { cat = cat.title }))
+    rb:setWidthToTitle()
+    line(rb)
+    S.catNote.elems[1].el.text = PAGES[g.page].footer
+    at(S.catNote, x0 + rb:getWidth() + 16, y + math.floor((BH - hS) / 2), x1 - x0 - rb:getWidth() - 16, hS + 2)
+    y = y + BH + SP
+    return y
+end
+
+function layoutPage.problems(C, y)
+    local S, x0, w = C.S, C.x0, C.w
+    local at, line, rowAt = C.at, C.line, C.rowAt
+    local hS, hM, hL, SP = C.G.hS, C.G.hM, C.G.hL, C.G.SP
+    at(S.probHead, x0, y, w, hL + hS + 10)
+    y = y + hL + hS + 10 + SP * 2
+    local cols = w >= 1300 and 3 or 2
+    local tileW = math.floor((w - (cols - 1) * 10) / cols)
+    local tileH = hM + 2 * hS + 26
+    local col, tl = 0, {}
+    for _, pr in ipairs(S.tree.problems) do
+        table.insert(tl, at(pr.tile, x0 + col * (tileW + 10), y, tileW, tileH))
+        col = col + 1
+        if col == cols then
+            col = 0
+            y = y + tileH + 10
+            line(unpack(tl))
+            tl = {}
+        end
+    end
+    if col ~= 0 then
+        y = y + tileH + 10
+        line(unpack(tl))
+    end
+    y = y + SP * 3
+    local pr = S.tree.problems[NAV.problem] or S.tree.problems[1]
+    if pr then
+        local lines = wrapLines(UIFont.Small, pr.why, w - 56)
+        local whyH = hM + 16 + #lines * hS + 12
+        S.probWhy.elems[1].el.problem, S.probWhy.elems[1].el.lines = pr, lines
+        at(S.probWhy, x0, y, w, whyH)
+        y = y + whyH + SP * 2
+        for _, row in ipairs(pr.rows) do y = rowAt(row, y) end
+    end
+    return y
+end
+
+function layoutPage.search(C, y)
+    local S, x0, w = C.S, C.x0, C.w
+    local at, rowAt = C.at, C.rowAt
+    local hS, hM, SP = C.G.hS, C.G.hM, C.G.SP
+    S.searchHead.elems[1].el.text = (S.hitCount or 0) > 0
+        and (S.hitCount == 1
+            and pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_766b975a76", "1 setting matches \"{query}\", best first", { query = S.query or "" })
+            or pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_e21b8a17fc", "{hit} settings match \"{query}\", best first", { hit = S.hitCount, query = S.query or "" }))
+        or pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_0126bd1352", "Nothing matches \"{query}\"", { query = S.query or "" })
+    at(S.searchHead, x0, y, w, hM + 6)
+    y = y + hM + 6 + SP * 2
+    local hits = S.hits or {}
+    -- the categories by their best match, the matches inside by score
+    local cats = {}
+    for _, g in ipairs(S.tree.groups) do
+        for _, cat in ipairs(g.cats) do
+            local list, best = {}, 0
+            for _, row in ipairs(cat.rows) do
+                local s = hits[row]
+                if s then
+                    table.insert(list, row)
+                    if s > best then best = s end
+                end
+            end
+            if #list > 0 then
+                table.sort(list, function(a, b)
+                    if hits[a] ~= hits[b] then return hits[a] > hits[b] end
+                    return a.index < b.index
+                end)
+                table.insert(cats, { cat = cat, rows = list, best = best })
+            end
+        end
+    end
+    table.sort(cats, function(a, b) return a.best > b.best end)
+    for _, c in ipairs(cats) do
+        at(c.cat.resultHead, x0, y, w, hS + 8)
+        y = y + hS + 8 + SP
+        for _, row in ipairs(c.rows) do y = rowAt(row, y) end
+        y = y + SP * 2
+    end
+    return y
+end
+
 -- ---------------------------------------------------------------------------------------------------
 -- Building the page (once, the first time the tab is shown)
 
-local function buildPage(self)
-    local t0 = getTimestampMs()
-    local savedPanel, savedAddY = self.mainPanel, self.addY
-    local firstOption = #self.gameOptions.options + 1
-    local wasChanged = self.gameOptions.changed
-    local style = MainOptions.style
-    local BH, SP = style.buttonHeight, style.borderSpacing
-    local hS, hM, hL = fontH(UIFont.Small), fontH(UIFont.Medium), fontH(UIFont.Large)
-    local comboWidth = 45 * (getCore():getOptionFontSizeReal() + 1) + 60
-    local panel = self.pzoptPanel
-    self.mainPanel = panel
-    self.addY = 0
-    local p = perf()
-    local W, H = panel:getWidth(), panel:getHeight()
-    local G = { m = 16, sbar = 13, hS = hS, hM = hM, hL = hL, BH = BH, SP = SP }
-    -- the sidebar as wide as its longest category name needs (with its count), within 200..330 px; the preview a
-    -- quarter of the width, at least 300 px (a 1920 x 1080 window is 1344 px wide: 1/4 is 336)
-    local longest = 0
-    for _, g in ipairs(PzoptSettingsLayout.groups) do
-        for _, c in ipairs(g.cats) do longest = math.max(longest, textW(UIFont.Small, c.title)) end
-    end
-    G.sideW = math.max(200, math.min(330, math.max(math.floor(W * 0.14), longest + textW(UIFont.Small, "000") + 48)))
-    G.prevW = math.max(300, math.min(900, math.floor(W * 0.25)))
-    G.prevX = W - G.m - G.sbar - G.prevW
-    G.contentX = G.m + G.sideW + GAP
-    G.contentR = G.prevX - GAP
-    G.homeX, G.homeR = G.m, W - G.m - G.sbar
-    G.ctrlW = math.min(comboWidth, math.floor((G.contentR - G.contentX) * 0.4))
-    G.labelX = G.contentX + G.ctrlW + 12
-    local split = G.contentX - 20 -- the stock helpers put the control at splitpoint + 20
-    local S = { panel = panel, G = G, items = {}, keyRows = {}, searchRows = {}, self = self, hitCount = 0 }
-    self.pzoptSearch = S
+-- Parts of buildPage, one function each: the game's Lua compiler fails a function that declares more than 200 locals
+-- in a -debug game, and buildPage in one piece declared 216 (issue #58, 2026-10-04; scripts/LuaDebugCompile.java checks
+-- it in build.sh). B = the page being built and buildPage's element helpers.
+local pageBuild = {}
 
-    -- every element added while `sink` is set belongs to the item being built
-    local sink
-    panel.addChild = function(o, child)
-        if sink then table.insert(sink, child) end
-        return ISPanelJoypad.addChild(o, child)
-    end
-    local function capture(fn)
-        local top = self.addY
-        sink = {}
-        local result = fn()
-        local item = { elems = {}, step = self.addY - top }
-        for _, el in ipairs(sink) do table.insert(item.elems, { el = el, dy = el:getY() - top, x0 = el:getX() }) end
-        sink = nil
-        table.insert(S.items, item)
-        return item, result, top
-    end
-    -- one element, placed by relayout at its own x
-    local function single(el)
-        panel:addChild(el)
-        local item = { elems = { { el = el, dy = 0, x0 = el:getX() } }, step = el:getHeight() }
-        table.insert(S.items, item)
-        return item
-    end
-    local function button(title, tip, onclick, h)
-        local b = ISButton:new(0, 0, 100, h or BH, title, self, onclick)
-        b:initialise()
-        b:setWidthToTitle()
-        b.tooltip = tip
-        return b, single(b)
-    end
-    local function buttonItem(title, tip, onclick)
-        local _, item = button(title, tip, onclick)
-        return item
-    end
-    local function label(text, col, font)
-        col = col or C_TEXT
-        local l = ISLabel:new(0, 0, BH, text, col.r, col.g, col.b, 1, font or UIFont.Small, true)
-        l:initialise()
-        return l, single(l)
-    end
-
-    -- the header
+function pageBuild.header(B)
+    local self, S, G, single, buttonItem, label = B.self, B.S, B.G, B.single, B.buttonItem, B.label
+    local BH, hS, hM, hL = G.BH, G.hS, G.hM, G.hL
     S.homeButton = buttonItem(pzoptTr("UI_pzopt_text_pzopt_optimizations_options_0803b3856f", "<  Home"), pzoptTr("UI_pzopt_text_pzopt_optimizations_options_26b181dfb4", "Back to the start page: presets, every category, export / import."),
         function() navigate(S, "home") end)
     S.title = single(drawPanel(function(o)
@@ -4565,7 +4529,11 @@ local function buildPage(self)
     S.rule = single(drawPanel(function(o) o:drawRect(0, 0, o.width, 1, 1, 0.35, 0.35, 0.38) end))
     S.rule2 = single(drawPanel(function(o) o:drawRect(0, 0, o.width, 1, 1, 0.35, 0.35, 0.38) end))
     S.rule.background, S.rule2.background = true, true -- (drawn under other items: the harness's overlap audit skips them)
+end
 
+function pageBuild.home(B)
+    local self, S, p, single, button, label = B.self, B.S, B.p, B.single, B.button, B.label
+    local hS, hM = B.G.hS, B.G.hM
     -- home: presets, group headings, tiles, help, tools
     local _, presetLabelItem = label(pzoptTr("UI_pzopt_text_pzopt_optimizations_options_e709e76ff5", "Presets"), C_GREY)
     S.presetLabel = presetLabelItem
@@ -4623,160 +4591,12 @@ local function buildPage(self)
             yy = yy + hS
         end
     end))
+end
 
-    -- category pages: heading, footer
-    S.catHead = single(drawPanel(function(o)
-        local cat = o.cat
-        if not cat then return end
-        local c = cat.group.c
-        o:drawText(cat.title, 0, 0, 1, 1, 1, 1, UIFont.Large)
-        o:drawText(clipText(UIFont.Small, cat.blurb, o.width), 0, hL + 4, C_GREY.r, C_GREY.g, C_GREY.b, 1, UIFont.Small)
-        local count = pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_24a79f370d", "{count} settings in {subs} subcategories", { count = #cat.rows, subs = #cat.subs })
-        if textW(UIFont.Large, cat.title) + 24 + textW(UIFont.Small, count) <= o.width then
-            o:drawTextRight(count, o.width, math.floor((hL - hS) / 2), c.r, c.g, c.b, 1, UIFont.Small)
-        end
-        if groupOff(cat.group) then
-            o:drawText(clipText(UIFont.Small, pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_249abff887", "Switched off: the {group} master switch on the home page is off, so these settings are ignored.", { group = cat.group.title }), o.width), 0, hL + hS + 8, C_STOCK.r, C_STOCK.g, C_STOCK.b, 1, UIFont.Small)
-        end
-    end))
-    S.tabRule = single(drawPanel(function(o) o:drawRect(0, 0, o.width, 1, 1, 0.3, 0.3, 0.33) end))
-    S.tabRule.background = true
-    S.moreButton = buttonItem(pzoptTr("UI_pzopt_text_pzopt_optimizations_options_25911d48e0", "Show more"), pzoptTr("UI_pzopt_text_pzopt_optimizations_options_4bf8b0b170", "Switches the view so this subcategory shows the rest of its settings."), function()
-        setLevel(S, NAV.level == "simple" and "advanced" or "everything")
-    end)
-    S.catReset = buttonItem(pzoptTr("UI_pzopt_text_pzopt_optimizations_options_ddefe47d69", "Reset to defaults"), pzoptTr("UI_pzopt_text_pzopt_optimizations_options_f8b0407b3e", "Puts every setting of this category back to the build's default on this machine. Only the controls change; Apply or Accept saves them."), function()
-        local cat = S.tree.catById[NAV.cat]
-        if not cat then return end
-        local list = {}
-        for _, row in ipairs(cat.rows) do table.insert(list, row.option) end
-        resetOptions(list)
-    end)
-    S.catNote = single(drawPanel(function(o)
-        o:drawText(clipText(UIFont.Small, o.text or "", o.width), 0, 0, C_DIM.r, C_DIM.g, C_DIM.b, 1, UIFont.Small)
-    end))
-
-    -- problems
-    S.probHead = single(drawPanel(function(o)
-        o:drawText(pzoptTr("UI_pzopt_text_pzopt_optimizations_options_e90196f8c5", "Fix a problem"), 0, 0, 1, 1, 1, 1, UIFont.Large)
-        o:drawText(clipText(UIFont.Small, pzoptTr("UI_pzopt_text_pzopt_optimizations_options_821f8ab738", "Pick what you notice: why it happens, and the settings that help, wherever they live."), o.width),
-            0, hL + 4, C_GREY.r, C_GREY.g, C_GREY.b, 1, UIFont.Small)
-    end))
-    S.probWhy = single(drawPanel(function(o)
-        local pr = o.problem
-        if not pr then return end
-        o:drawRect(0, 0, o.width, o.height, 1, 0.115, 0.10, 0.13)
-        o:drawRectBorder(0, 0, o.width, o.height, 0.6, C_HELP.r, C_HELP.g, C_HELP.b)
-        o:drawText(pr.title, 16, 8, 1, 1, 1, 1, UIFont.Medium)
-        local yy = 12 + hM
-        for _, l in ipairs(o.lines or {}) do
-            o:drawText(l, 16, yy, 0.85, 0.85, 0.87, 1, UIFont.Small)
-            yy = yy + hS
-        end
-    end))
-    -- search
-    S.searchHead = single(drawPanel(function(o)
-        o:drawText(clipText(UIFont.Medium, o.text or "", o.width), 0, 0, 1, 1, 1, 1, UIFont.Medium)
-    end))
-
-    -- the settings: master switches first, then every section's entries (in tab order)
-    local rows = {}
-    local masterRows = {}
-    local optionLists = { {}, {}, {} }
-    local function makeRow(entry, pageIndex, section, isMaster)
-        local item, option, top = capture(function()
-            if entry.bezier then return addBezierOption(self, entry, split, 0, G.ctrlW, BH) end
-            if entry.colour then return addColourOption(self, entry, split, 0) end
-            if entry.choices then return addIntOption(self, entry, split, 0, G.ctrlW) end
-            return addBoolOption(self, entry, split, 0, BH)
-        end)
-        -- the labels the stock helpers right-align left of the control go to its right, left-aligned; a setting's name
-        -- too long for the column (a 1920 x 1080 window) wraps: its first line stays the label, the rest goes on the
-        -- line(s) under it, above the tags (PzoptRowInfo)
-        local maxLab = 0
-        local more = {}
-        local titled = false
-        for _, e in ipairs(item.elems) do
-            local el = e.el
-            if el.Type == "ISLabel" and el:getX() < G.contentX - 1 then
-                local font = el.font or UIFont.Small
-                local room = G.contentR - G.labelX
-                local name = el.name or ""
-                if not titled and textW(font, name) > room then
-                    local lines = wrapLines(font, name, room)
-                    name = lines[1]
-                    for i = 2, math.min(#lines, 3) do table.insert(more, lines[i]) end
-                    if #lines > 3 then more[2] = clipText(font, more[2] .. " " .. table.concat(lines, " ", 4), room) end
-                end
-                titled = true
-                name = clipText(font, name, room)
-                el.left, el.originalX, el.name = true, G.labelX, name
-                el:setWidth(textW(font, name))
-                el:setX(G.labelX)
-                e.x0 = G.labelX
-                maxLab = math.max(maxLab, el:getWidth())
-            elseif el.Type == "ISTickBox" then
-                el:setX(G.contentX + G.ctrlW - el:getWidth())
-                e.x0 = el:getX()
-            end
-        end
-        for _, e in ipairs(item.elems) do
-            if e.el.Type ~= "ISLabel" and e.el:getX() < G.contentX - 1 then -- the curve plot, smaller when the column is narrow
-                local px = G.labelX + maxLab + 16
-                local size = math.max(40, math.min(e.el:getWidth(), G.contentR - px))
-                e.el:setWidth(size)
-                e.el:setHeight(size)
-                e.el:setX(px)
-                e.x0 = px
-            end
-        end
-        local row = item
-        row.entry, row.option, row.page, row.section = entry, option, pageIndex, section
-        row.key = entry.key
-        row.tier = isMaster and 1 or tierOf(entry.key)
-        row.clip = isMaster and PAGES[pageIndex].masterClip or (KEY_CLIP[entry.key] or section.clip or "drive")
-        row.controlDy = 0
-        -- the line under the label (after the rest of a wrapped name)
-        row.labelMore = more
-        local infoH = (hS + 2) * (1 + #more)
-        local info = PzoptRowInfo:new(G.labelX, self.addY - SP + 1, G.contentR - G.labelX, infoH, row)
-        info:initialise()
-        panel:addChild(info)
-        table.insert(row.elems, { el = info, dy = info:getY() - top, x0 = G.labelX })
-        self.addY = self.addY + infoH + SP
-        row.step = self.addY - top
-        row.h = row.step
-        option.pzoptProfile = section and section.profiles
-        if not isMaster then table.insert(optionLists[pageIndex], option) end
-        table.insert(S.keyRows, row)
-        row.index = #S.keyRows
-        return row
-    end
-    for pi, page in ipairs(PAGES) do
-        if page.master and p:isPzoptOptionKnown(page.master.key) then
-            local row = makeRow(page.master, pi, nil, true)
-            row.isMaster = true
-            masterRows[pi] = row
-            self[page.masterField] = row.option
-        end
-    end
-    -- the Visuals cards are built before the rows inside them, so the rows draw over them
-    for pi, page in ipairs(PAGES) do
-        for _, section in ipairs(page.sections) do
-            for _, entry in ipairs(section.entries) do
-                if p:isPzoptOptionKnown(entry.key) then
-                    table.insert(rows, { entry = entry, page = pi, section = section })
-                else
-                    print("[pzopt] options tab: unknown key " .. entry.key .. ", skipped")
-                end
-            end
-        end
-    end
-    -- the tree needs the rows' keys and sections only; build it on stand-ins, then make the cards, then the real rows
-    local stand = {}
-    for _, r in ipairs(rows) do table.insert(stand, { entry = r.entry, page = r.page, section = r.section, stand = r }) end
-    local tree = buildTree(stand, masterRows)
-    S.tree = tree
-    -- group headings, tiles, Visuals cards and subcategory tabs / headings (before the rows: they draw beneath them)
+-- group headings, tiles, Visuals cards and subcategory tabs / headings (before the rows: they draw beneath them)
+function pageBuild.decorations(B)
+    local self, S, single, buttonItem = B.self, B.S, B.single, B.buttonItem
+    local hS, hM, tree = B.G.hS, B.G.hM, S.tree
     for _, g in ipairs(tree.groups) do
         local group = g
         g.heading = single(drawPanel(function(o)
@@ -4907,6 +4727,240 @@ local function buildPage(self)
             o:drawText(pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_39bb3bfc48", "{count} settings, {on} on", { count = #problem.rows, on = on }), 12, o.height - hS - 8, c.r, c.g, c.b, 1, UIFont.Small)
         end))
     end
+end
+
+local function buildPage(self)
+    local t0 = getTimestampMs()
+    local savedPanel, savedAddY = self.mainPanel, self.addY
+    local firstOption = #self.gameOptions.options + 1
+    local wasChanged = self.gameOptions.changed
+    local style = MainOptions.style
+    local BH, SP = style.buttonHeight, style.borderSpacing
+    local hS, hM, hL = fontH(UIFont.Small), fontH(UIFont.Medium), fontH(UIFont.Large)
+    local comboWidth = 45 * (getCore():getOptionFontSizeReal() + 1) + 60
+    local panel = self.pzoptPanel
+    self.mainPanel = panel
+    self.addY = 0
+    local p = perf()
+    local W, H = panel:getWidth(), panel:getHeight()
+    local G = { m = 16, sbar = 13, hS = hS, hM = hM, hL = hL, BH = BH, SP = SP }
+    -- the sidebar as wide as its longest category name needs (with its count), within 200..330 px; the preview a
+    -- quarter of the width, at least 300 px (a 1920 x 1080 window is 1344 px wide: 1/4 is 336)
+    local longest = 0
+    for _, g in ipairs(PzoptSettingsLayout.groups) do
+        for _, c in ipairs(g.cats) do longest = math.max(longest, textW(UIFont.Small, c.title)) end
+    end
+    G.sideW = math.max(200, math.min(330, math.max(math.floor(W * 0.14), longest + textW(UIFont.Small, "000") + 48)))
+    G.prevW = math.max(300, math.min(900, math.floor(W * 0.25)))
+    G.prevX = W - G.m - G.sbar - G.prevW
+    G.contentX = G.m + G.sideW + GAP
+    G.contentR = G.prevX - GAP
+    G.homeX, G.homeR = G.m, W - G.m - G.sbar
+    G.ctrlW = math.min(comboWidth, math.floor((G.contentR - G.contentX) * 0.4))
+    G.labelX = G.contentX + G.ctrlW + 12
+    local split = G.contentX - 20 -- the stock helpers put the control at splitpoint + 20
+    local S = { panel = panel, G = G, items = {}, keyRows = {}, searchRows = {}, self = self, hitCount = 0 }
+    self.pzoptSearch = S
+
+    -- every element added while `sink` is set belongs to the item being built
+    local sink
+    panel.addChild = function(o, child)
+        if sink then table.insert(sink, child) end
+        return ISPanelJoypad.addChild(o, child)
+    end
+    local function capture(fn)
+        local top = self.addY
+        sink = {}
+        local result = fn()
+        local item = { elems = {}, step = self.addY - top }
+        for _, el in ipairs(sink) do table.insert(item.elems, { el = el, dy = el:getY() - top, x0 = el:getX() }) end
+        sink = nil
+        table.insert(S.items, item)
+        return item, result, top
+    end
+    -- one element, placed by relayout at its own x
+    local function single(el)
+        panel:addChild(el)
+        local item = { elems = { { el = el, dy = 0, x0 = el:getX() } }, step = el:getHeight() }
+        table.insert(S.items, item)
+        return item
+    end
+    local function button(title, tip, onclick, h)
+        local b = ISButton:new(0, 0, 100, h or BH, title, self, onclick)
+        b:initialise()
+        b:setWidthToTitle()
+        b.tooltip = tip
+        return b, single(b)
+    end
+    local function buttonItem(title, tip, onclick)
+        local _, item = button(title, tip, onclick)
+        return item
+    end
+    local function label(text, col, font)
+        col = col or C_TEXT
+        local l = ISLabel:new(0, 0, BH, text, col.r, col.g, col.b, 1, font or UIFont.Small, true)
+        l:initialise()
+        return l, single(l)
+    end
+
+    local B = { self = self, S = S, G = G, p = p, single = single, button = button, buttonItem = buttonItem, label = label }
+    pageBuild.header(B)
+
+    pageBuild.home(B)
+
+    -- category pages: heading, footer
+    S.catHead = single(drawPanel(function(o)
+        local cat = o.cat
+        if not cat then return end
+        local c = cat.group.c
+        o:drawText(cat.title, 0, 0, 1, 1, 1, 1, UIFont.Large)
+        o:drawText(clipText(UIFont.Small, cat.blurb, o.width), 0, hL + 4, C_GREY.r, C_GREY.g, C_GREY.b, 1, UIFont.Small)
+        local count = pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_24a79f370d", "{count} settings in {subs} subcategories", { count = #cat.rows, subs = #cat.subs })
+        if textW(UIFont.Large, cat.title) + 24 + textW(UIFont.Small, count) <= o.width then
+            o:drawTextRight(count, o.width, math.floor((hL - hS) / 2), c.r, c.g, c.b, 1, UIFont.Small)
+        end
+        if groupOff(cat.group) then
+            o:drawText(clipText(UIFont.Small, pzoptFmt("UI_pzopt_text_pzopt_optimizations_options_249abff887", "Switched off: the {group} master switch on the home page is off, so these settings are ignored.", { group = cat.group.title }), o.width), 0, hL + hS + 8, C_STOCK.r, C_STOCK.g, C_STOCK.b, 1, UIFont.Small)
+        end
+    end))
+    S.tabRule = single(drawPanel(function(o) o:drawRect(0, 0, o.width, 1, 1, 0.3, 0.3, 0.33) end))
+    S.tabRule.background = true
+    S.moreButton = buttonItem(pzoptTr("UI_pzopt_text_pzopt_optimizations_options_25911d48e0", "Show more"), pzoptTr("UI_pzopt_text_pzopt_optimizations_options_4bf8b0b170", "Switches the view so this subcategory shows the rest of its settings."), function()
+        setLevel(S, NAV.level == "simple" and "advanced" or "everything")
+    end)
+    S.catReset = buttonItem(pzoptTr("UI_pzopt_text_pzopt_optimizations_options_ddefe47d69", "Reset to defaults"), pzoptTr("UI_pzopt_text_pzopt_optimizations_options_f8b0407b3e", "Puts every setting of this category back to the build's default on this machine. Only the controls change; Apply or Accept saves them."), function()
+        local cat = S.tree.catById[NAV.cat]
+        if not cat then return end
+        local list = {}
+        for _, row in ipairs(cat.rows) do table.insert(list, row.option) end
+        resetOptions(list)
+    end)
+    S.catNote = single(drawPanel(function(o)
+        o:drawText(clipText(UIFont.Small, o.text or "", o.width), 0, 0, C_DIM.r, C_DIM.g, C_DIM.b, 1, UIFont.Small)
+    end))
+
+    -- problems
+    S.probHead = single(drawPanel(function(o)
+        o:drawText("Fix a problem", 0, 0, 1, 1, 1, 1, UIFont.Large)
+        o:drawText(clipText(UIFont.Small, pzoptTr("UI_pzopt_text_pzopt_optimizations_options_821f8ab738", "Pick what you notice: why it happens, and the settings that help, wherever they live."), o.width),
+            0, hL + 4, C_GREY.r, C_GREY.g, C_GREY.b, 1, UIFont.Small)
+    end))
+    S.probWhy = single(drawPanel(function(o)
+        local pr = o.problem
+        if not pr then return end
+        o:drawRect(0, 0, o.width, o.height, 1, 0.115, 0.10, 0.13)
+        o:drawRectBorder(0, 0, o.width, o.height, 0.6, C_HELP.r, C_HELP.g, C_HELP.b)
+        o:drawText(pr.title, 16, 8, 1, 1, 1, 1, UIFont.Medium)
+        local yy = 12 + hM
+        for _, l in ipairs(o.lines or {}) do
+            o:drawText(l, 16, yy, 0.85, 0.85, 0.87, 1, UIFont.Small)
+            yy = yy + hS
+        end
+    end))
+    -- search
+    S.searchHead = single(drawPanel(function(o)
+        o:drawText(clipText(UIFont.Medium, o.text or "", o.width), 0, 0, 1, 1, 1, 1, UIFont.Medium)
+    end))
+
+    -- the settings: master switches first, then every section's entries (in tab order)
+    local rows = {}
+    local masterRows = {}
+    local optionLists = { {}, {}, {} }
+    local function makeRow(entry, pageIndex, section, isMaster)
+        local item, option, top = capture(function()
+            if entry.bezier then return addBezierOption(self, entry, split, 0, G.ctrlW, BH) end
+            if entry.colour then return addColourOption(self, entry, split, 0) end
+            if entry.choices then return addIntOption(self, entry, split, 0, G.ctrlW) end
+            return addBoolOption(self, entry, split, 0, BH)
+        end)
+        -- the labels the stock helpers right-align left of the control go to its right, left-aligned; a setting's name
+        -- too long for the column (a 1920 x 1080 window) wraps: its first line stays the label, the rest goes on the
+        -- line(s) under it, above the tags (PzoptRowInfo)
+        local maxLab = 0
+        local more = {}
+        local titled = false
+        for _, e in ipairs(item.elems) do
+            local el = e.el
+            if el.Type == "ISLabel" and el:getX() < G.contentX - 1 then
+                local font = el.font or UIFont.Small
+                local room = G.contentR - G.labelX
+                local name = el.name or ""
+                if not titled and textW(font, name) > room then
+                    local lines = wrapLines(font, name, room)
+                    name = lines[1]
+                    for i = 2, math.min(#lines, 3) do table.insert(more, lines[i]) end
+                    if #lines > 3 then more[2] = clipText(font, more[2] .. " " .. table.concat(lines, " ", 4), room) end
+                end
+                titled = true
+                name = clipText(font, name, room)
+                el.left, el.originalX, el.name = true, G.labelX, name
+                el:setWidth(textW(font, name))
+                el:setX(G.labelX)
+                e.x0 = G.labelX
+                maxLab = math.max(maxLab, el:getWidth())
+            elseif el.Type == "ISTickBox" then
+                el:setX(G.contentX + G.ctrlW - el:getWidth())
+                e.x0 = el:getX()
+            end
+        end
+        for _, e in ipairs(item.elems) do
+            if e.el.Type ~= "ISLabel" and e.el:getX() < G.contentX - 1 then -- the curve plot, smaller when the column is narrow
+                local px = G.labelX + maxLab + 16
+                local size = math.max(40, math.min(e.el:getWidth(), G.contentR - px))
+                e.el:setWidth(size)
+                e.el:setHeight(size)
+                e.el:setX(px)
+                e.x0 = px
+            end
+        end
+        local row = item
+        row.entry, row.option, row.page, row.section = entry, option, pageIndex, section
+        row.key = entry.key
+        row.tier = isMaster and 1 or tierOf(entry.key)
+        row.clip = isMaster and PAGES[pageIndex].masterClip or (KEY_CLIP[entry.key] or section.clip or "drive")
+        row.controlDy = 0
+        -- the line under the label (after the rest of a wrapped name)
+        row.labelMore = more
+        local infoH = (hS + 2) * (1 + #more)
+        local info = PzoptRowInfo:new(G.labelX, self.addY - SP + 1, G.contentR - G.labelX, infoH, row)
+        info:initialise()
+        panel:addChild(info)
+        table.insert(row.elems, { el = info, dy = info:getY() - top, x0 = G.labelX })
+        self.addY = self.addY + infoH + SP
+        row.step = self.addY - top
+        row.h = row.step
+        option.pzoptProfile = section and section.profiles
+        if not isMaster then table.insert(optionLists[pageIndex], option) end
+        table.insert(S.keyRows, row)
+        row.index = #S.keyRows
+        return row
+    end
+    for pi, page in ipairs(PAGES) do
+        if page.master and p:isPzoptOptionKnown(page.master.key) then
+            local row = makeRow(page.master, pi, nil, true)
+            row.isMaster = true
+            masterRows[pi] = row
+            self[page.masterField] = row.option
+        end
+    end
+    -- the Visuals cards are built before the rows inside them, so the rows draw over them
+    for pi, page in ipairs(PAGES) do
+        for _, section in ipairs(page.sections) do
+            for _, entry in ipairs(section.entries) do
+                if p:isPzoptOptionKnown(entry.key) then
+                    table.insert(rows, { entry = entry, page = pi, section = section })
+                else
+                    print("[pzopt] options tab: unknown key " .. entry.key .. ", skipped")
+                end
+            end
+        end
+    end
+    -- the tree needs the rows' keys and sections only; build it on stand-ins, then make the cards, then the real rows
+    local stand = {}
+    for _, r in ipairs(rows) do table.insert(stand, { entry = r.entry, page = r.page, section = r.section, stand = r }) end
+    local tree = buildTree(stand, masterRows)
+    S.tree = tree
+    pageBuild.decorations(B)
     -- the real rows, in the tree's order (stand-ins swapped for them)
     local real = {}
     for _, st in ipairs(stand) do
