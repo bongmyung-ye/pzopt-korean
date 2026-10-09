@@ -701,6 +701,8 @@ local SECTIONS = {
               tip = "Lot headers, vehicle zones and room ids resolve once per cell instead of repeatedly; identical results." },
             { key = "shaderCache", label = "Reuse model shaders",
               tip = "A model takes a shader an earlier model already created instead of waiting one loading-screen frame for the render thread." },
+            { key = "shaderWarmup", label = "Build shaders ahead of play",
+              tip = "Shaders that were built the first time something needed them, in the middle of play, are built ahead: every model shader the game's scripts name during the loading screen (the first car of a session stopped the game for up to half a second), and the Visuals' own programs (foliage sway, god rays, wet blood) as the world appears. Matters most on the first launch after an update, when the graphics driver has none of them cached. Applies on the next launch." },
             { key = "mipmapArrays", label = "Row-based texture mipmaps",
               tip = "Texture mipmaps and alpha premultiply build row by row on byte arrays; same pixels as stock." },
             { key = "texCompress", label = "Texture compression: who compresses",
@@ -1023,7 +1025,9 @@ local ENHANCEMENT_SECTIONS = {
             { key = "mirrors", label = "Mirror and window reflections",
               tip = "Wall mirrors, mirrored medicine cabinets and dressers, and window panes reflect what stands in front of them: the floor and the room, the street, and you, the zombies and the cars as their real other side (the game's own models drawn once more through the mirror's plane, lit as they are lit), so a mirror shows your face, not your back. From the game's high camera a wall mirror shows the floor and whoever stands within a couple of squares of it; a window upstairs shows the street below. Someone inside a room seen through a window keeps the reflection over them, as glass does; a closed curtain stops it. The room part of each pane's reflection is worked out once and kept while nothing changes (the camera's pan does not change it), panes hidden under a roof or behind a building are skipped, and the people in it are redrawn at most 120 times a second: a few hundredths of a millisecond a frame for a street of windows on a fast GPU, nothing when no mirror or window is on screen. Applies on the next launch (mirror tiles are drawn on their own instead of into the chunk pictures)." },
             { key = "mirrorsWindows", label = "Mirrors: windows reflect too",
-              tip = "On: window panes reflect as well (subtly, as glass does). Off: only wall mirrors. Applies on the next launch." },
+              tip = "On: window panes reflect as well (subtly, as glass does). Off: no window reflects (wall mirrors and glass props keep theirs). Applies on the next launch." },
+            { key = "mirrorsWallMirrors", label = "Mirrors: wall mirrors reflect too",
+              tip = "On: wall mirrors, mirrored medicine cabinets and dressers, and the gym's wall mirrors reflect the room in front of them and the people in it. Off: they look as in the game (a plain mirror texture), and only the windows and glass props reflect: for window reflections without the mirrors. Applies on the next launch." },
             { key = "mirrorsWindowPct", label = "Mirrors: window reflection strength (%)",
               choices = { "15", "30", "50", "70" }, note = { ["30"] = "default" },
               tip = "How much of a window pane is its reflection. Real glass reflects a few percent head-on, more where the room behind it is dark; higher reads more like a shop window by day. Applies on the next launch." },
@@ -1204,7 +1208,7 @@ local NEXT_LAUNCH_ONLY = { hdr = true, hdrAuto = true, carOccupant = true, carOc
     -- car glass: the vehicle shaders are patched when the game loads them (only then); its strengths apply at once
     carGlass = true,
     -- mirrors: mirror tiles leave the chunk pictures at start-up; the settings are read once
-    mirrors = true, mirrorsWindows = true, mirrorsWindowPct = true, mirrorsModels = true, mirrorsGeometry = true, mirrorsViewLateralPct = true, mirrorsViewDropPct = true,
+    mirrors = true, mirrorsWindows = true, mirrorsWallMirrors = true, mirrorsWindowPct = true, mirrorsModels = true, mirrorsGeometry = true, mirrorsViewLateralPct = true, mirrorsViewDropPct = true,
     mirrorsProps = true, mirrorsPropGlassPct = true,
     -- relief: compiled into the chunk composite programs when the game loads them
     relief = true, reliefDepthPct = true, reliefSunPct = true, reliefTorchShadowSteps = true }
@@ -1995,6 +1999,7 @@ local EFFECTS = {
     carGlass = { gpu = 1 },
     mirrors = { gpu = 1, vram = 1, render = 1 },
     mirrorsWindows = { gpu = 1 },
+    mirrorsWallMirrors = { gpu = 1 },
     mirrorsWindowPct = {},
     mirrorsProps = { gpu = 1, render = 1 },
     mirrorsPropGlassPct = {},
@@ -2152,6 +2157,7 @@ local EFFECTS = {
     parallelDepthMaps = { load = -1, cores = 1 },
     loaderCpuFixes = { load = -1, cpu = -1 },
     shaderCache = { load = -3, render = -1 },
+    shaderWarmup = { render = -1 },
     mipmapArrays = { cores = -1 },
     texCompress = { render = -3, load = -1, cores = 1, gpu = 1 },
     noLoadFade = { load = -1 },
