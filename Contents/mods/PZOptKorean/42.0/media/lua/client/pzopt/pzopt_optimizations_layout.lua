@@ -22,7 +22,7 @@ PzoptSettingsLayout = {
               subs = {
                 { title = "Car smoothness", keys = { "vehicleSmooth", "driveCameraLate", "driveLookSmooth", "cameraScreenPixels",
                     "physicsStepHz", "physicsStepMode" } },
-                { title = "Chunk streaming", keys = { "parallel", "workers", "loadWorkers", "wake", "chunkHandoffDivisor",
+                { title = "Chunk streaming", keys = { "parallel", "workers", "loadWorkers", "wake", "chunkHandoffDivisor", "slackWork",
                     "hotsaveStaged", "hotsaveIntervalSec" } },
                 { title = "Render distance", keys = { "chunkGridWidth", "chunkGridFollowView" } },
                 { title = "Trees while driving", keys = { "driveTreeCutaway", "treeRebakeLazy", "treeRebakeLingerMs",
@@ -55,13 +55,15 @@ PzoptSettingsLayout = {
                 { title = "On other cores", keys = { "animBonesParallel", "actionEvalParallel", "charDrawPrep", "frameThreads",
                     "animatorParallel", "headOnWorker", "animatorPipeline", "animBatchAsync", "guardedCallbacks", "lightingReadParallel",
                     "charDrawThreads", "separateParallel", "skinTransformsPrecompute", "skinPalettePrecompute", "shadowPrep", "aoContextParallel",
-                    "entityUpdateParallel", "entityUpdatePipeline", "entityUpdatePlayerFirst", "entityUpdateMoreStates", "postupdateParallel" } },
+                    "entityUpdateParallel", "entityUpdatePipeline", "entityUpdatePlayerFirst", "entityUpdateMoreStates", "postupdateParallel",
+                    "postupdateFuse", "postupdateClean", "postupdateEligibleOnWorker", "postupdateVehicleOnWorker", "randPerWorker" } },
                 { title = "Cheaper checks", keys = { "playerLosFast", "ecsLookupFast", "actionConditionFast", "zombieCullSortFast", "vehicleCull", "nearVehicleGrid",
-                    "zombieSpotFast", "zombieAtlasFast", "separateFast", "edgeTestFast", "ragdollGate", "bodyModelCache", "sleepCheckMemo", "stateParamMemo",
+                    "zombieSpotFast", "zombieAtlasFast", "renderLastFast", "separateFast", "edgeTestFast", "separateEdgeCache", "postupdateNoopSkip", "luaSilentSkip", "ragdollGate", "bodyModelCache", "sleepCheckMemo", "stateParamMemo",
                     "actionGroupCache", "boneIndexCache", "lazyPose", "modelLockPerInstance", "poolStatsBatched", "actionSnapshotFilter",
                     "emitterParamSkip", "profilerThreadMemo" } },
+                { title = "Drawing the horde", keys = { "hordeBatch", "hordeBatchUpload" } },
                 { title = "Detail by distance", keys = { "zombieLodDynamic", "zombieSimLodTiles", "zombieSimLodSteps", "zombieCheckSpread",
-                    "zombieLodMin3d", "zombieLodMinBlend", "zombieLodUncappedFps" } },
+                    "zombieLodMin3d", "zombieLodMinBlend", "zombieLodUncappedFps", "zombieLodFixed3d", "zombieLodHysteresis", "zombieLodFadeMs", "zombieLodSpriteLight" } },
               } },
             { id = "load", title = "Boot and loading", blurb = "From launch to the menu, and from Continue to the world.",
               subs = {
@@ -74,7 +76,7 @@ PzoptSettingsLayout = {
               } },
             { id = "ui", title = "Menus, inventory and map", blurb = "Windows that answer in the frame you click.",
               subs = {
-                { title = "Windows", keys = { "uiRetained", "uiRetainedChildren", "uiTickStagger", "uiLuaFast", "hotsaveWarmup" } },
+                { title = "Windows", keys = { "uiRetained", "uiRetainedChildren", "uiVerify", "uiAnimate", "uiSlack", "uiMoveReplay", "uiTickStagger", "uiLuaFast", "hotsaveWarmup" } },
                 { title = "Map", keys = { "mapStreetCache", "mapStreetMemo", "mapVisitedFast" } },
                 { title = "Lua", keys = { "luaIndexCache", "luaInternConstants", "luaSkipEmpty" } },
               } },
@@ -211,6 +213,7 @@ local function pzoptLayoutTr(key, fallback)
 end
 
 local PZOPT_LAYOUT_TEXT_KEYS = {
+    ["Drawing the horde"] = "UI_pzopt_layout_8c4a0cc8a0",
     ["Performance"] = "UI_pzopt_layout_63c9045599",
     ["Smoother frames and faster loads. Nothing here changes how the game looks."] = "UI_pzopt_layout_42709e0997",
     ["Smoothness and pacing"] = "UI_pzopt_layout_3e8aeb5ffb",
