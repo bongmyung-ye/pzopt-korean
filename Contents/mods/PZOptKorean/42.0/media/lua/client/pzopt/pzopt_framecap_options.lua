@@ -72,7 +72,7 @@ local function install()
         local uncappedLabel = getText("UI_optionscreen_Uncapped")
         local extended = fpsLabels({ uncappedLabel })
         local combo = stockAddCombo(self, x, y, w, h, name, extended, selected, target, onchange)
-        local menu = stockAddCombo(self, x, y, w, h, pzoptTr("UI_pzopt_text_framecap_options_452e24742f", "Menu framerate"),
+        local menu = stockAddCombo(self, x, y, w, h, "Menu framerate",
                                    fpsLabels({ pzoptTr("UI_pzopt_text_framecap_options_366725f14a", "Same as in-game"), uncappedLabel }), 1, target, onchange)
         self.pzoptMenuCombo = menu
         -- The stock code creates the 'framerate' GameOption after this returns; catch it on add.
