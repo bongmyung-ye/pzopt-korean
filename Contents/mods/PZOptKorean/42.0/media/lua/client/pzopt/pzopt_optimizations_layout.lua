@@ -27,6 +27,8 @@ PzoptSettingsLayout = {
                 { title = "Chunk streaming", keys = { "parallel", "workers", "loadWorkers", "wake", "chunkHandoffDivisor", "handoffRecalcFast", "propIdCache", "slackWork",
                     "chunkHandoffCost", "chunkHandoffSlackMaxWait", "chunkHandoffForceAnyFrame", "chunkHandoffFrameBudgetUs",
                     "hotsaveStaged", "hotsaveIntervalSec" } },
+                { title = "Mod Lua while chunks arrive", keys = { "luaLoadStream", "luaLoadBudgetUs", "luaLoadNearestFirst", "luaLoadChunkSplit", "luaLoadSlack",
+                    "luaLoadPrefilter", "luaLoadSigProject", "luaLoadBatch", "luaLoadNoopSkip", "mapObjectsFast" } },
                 { title = "Render distance", keys = { "chunkGridWidth", "chunkGridFollowView" } },
                 { title = "Trees while driving", keys = { "driveTreeCutaway", "treeRebakeLazy", "treeRebakeLingerMs",
                     "treeCutawayReach", "treeCutawayReachPx", "treeBakeMaxChunksPerSec" } },
@@ -34,7 +36,7 @@ PzoptSettingsLayout = {
             { id = "world", master = "catWorldEnabled", title = "World drawing", blurb = "What the chunk pictures hold and how many are drawn in a frame.",
               subs = {
                 { title = "What bakes", keys = { "treesInChunkTexture", "treeBakeDirect", "treeBakePass", "treeAppend",
-                    "windowsInChunkTexture", "translucentTilesInChunkTexture", "glassTilesPerFrame", "floorDecalsPerFrame", "translucentLightsPerFrame",
+                    "windowsInChunkTexture", "translucentTilesInChunkTexture", "glassTilesPerFrame", "floorDecalsPerFrame", "translucentGridsPerFrame", "translucentLightsPerFrame",
                     "curtainDepthNudgePct", "windSpriteSway" } },
                 { title = "Bake budgets", keys = { "bakeScheduler", "bakeFrameBudget", "bakeBudgetAdaptive", "bakeBudgetGpu", "occlusionGrantedOnly",
                     "bakeNoSync", "bakeMipLevels", "renderChunkTopUp", "bakeBudget", "rebakeBudget", "rebakeMaxFrames" } },
@@ -64,6 +66,9 @@ PzoptSettingsLayout = {
                     "zombieSpotFast", "zombieAtlasFast", "renderLastFast", "separateFast", "edgeTestFast", "separateEdgeCache", "postupdateNoopSkip", "luaSilentSkip", "ragdollGate", "bodyModelCache", "sleepCheckMemo", "stateParamMemo",
                     "actionGroupCache", "boneIndexCache", "lazyPose", "modelLockPerInstance", "poolStatsBatched", "actionSnapshotFilter",
                     "emitterParamSkip", "profilerThreadMemo" } },
+                { title = "Mod scripts on every zombie", keys = { "luaZombieLod", "luaZombieBudgetUs", "luaZombieMaxGapMs", "luaZombieHz", "luaZombieLodNear",
+                    "luaZombieLodHz1", "luaZombieLodHz2", "luaZombieWriters", "luaZombieTimeComp", "luaZombieCaptureDue", "luaZombieCheapUs", "luaZombieCostShare",
+                    "luaZombieDirtySkip", "luaZombieBatchApi", "luaCollideDedupe" } },
                 { title = "Drawing the horde", keys = { "hordeBatch", "hordeBatchUpload", "hordeBatchVao", "atlasBatch", "hordeBatchOrder", "hordeBatchUnits", "hordePaletteMismatch", "renderPrewarm", "renderPrewarmOutlines", "bodyAtlasPrewarm" } },
                 { title = "Detail by distance", keys = { "zombieLodDynamic", "zombieSimLodTiles", "zombieSimLodSteps", "zombieCheckSpread",
                     "zombieLodMin3d", "zombieLodMinBlend", "zombieLodUncappedFps", "zombieLodFixed3d", "zombieLodHysteresis", "zombieLodFadeMs", "zombieLodSpriteLight",
@@ -84,14 +89,19 @@ PzoptSettingsLayout = {
               subs = {
                 { title = "Windows", keys = { "uiRetained", "uiRetainedChildren", "uiVerify", "uiAnimate", "uiSlack", "uiMoveReplay", "uiTickStagger", "uiLuaFast", "hotsaveWarmup" } },
                 { title = "Map", keys = { "mapStreetCache", "mapStreetMemo", "mapVisitedFast" } },
-                { title = "Lua", keys = { "luaIndexCache", "luaInternConstants", "luaSkipEmpty" } },
+                { title = "Lua", keys = { "luaJit", "luaJavaFast", "luaFastTable", "luaPatternFast", "luaStringFast", "luaIndexCache", "luaInternConstants", "luaSkipEmpty" } },
               } },
-            { id = "system", master = "catSystemEnabled", title = "System, sound and mods", blurb = "Cores and power, the audio mix, other mods, updates.",
+            { id = "system", master = "catSystemEnabled", title = "System, memory, sound and mods", blurb = "Java memory (heap size), cores and power, the audio mix, other mods, updates.",
               subs = {
+                -- prototype menu-impeccable (2026-10-19): the heap had no subcategory (it fell into "More", Advanced view only;
+                -- players found it only by searching "memory")
+                { title = "Memory (Java heap)", keys = { "gcHeap", "luaGcNoop", "gcMode", "gcHeapFixed", "gcPreTouch", "gcPauseMs",
+                    "gcG1Tuned", "gcSlack", "gcSlackQueue" } },
                 { title = "Cores and power", keys = { "corePlacement", "workerQosMac", "gpuPstate", "jitSteady", "lightingSyncPark" } },
                 { title = "Sound", keys = { "audioLimiter", "audioLimiterCeilingDb", "audioLimiterStereoFold", "soundTickHz",
                     "emitterIdleSkip", "worldSoundCleanupFast", "hearingHoist", "soundZoneCache", "worldSoundFast" } },
                 { title = "Mods and multiplayer", keys = { "modProfile", "modCompat", "uiRetainedMods", "luaWorkerGate", "luaChecksumExempt" } },
+                { title = "Mod Lua events", keys = { "luaTickHz", "luaTickAdaptive", "luaTickInputWake", "luaEventDispatchFast", "luaEventSkipEmpty", "luaErrorThrottle" } },
                 { title = "Updates", keys = { "updateCheck", "updatePrefetch", "updateFromWorkshop" } },
               } },
           } },
@@ -126,6 +136,13 @@ PzoptSettingsLayout = {
                 { title = "Relief", sections = { "Relief" } },
                 { title = "Zombie outlines", sections = { "Occluded zombie outlines" } },
               } },
+            { id = "ground", master = "catGroundEnabled", title = "Ground and grass", blurb = "Ground without the tile grid, seasonal ground cover and glints, tracks that stay, grass with blades.",
+              subs = {
+                { title = "Ground without the grid", sections = { "Ground and grass: tiling" } },
+                { title = "Ground cover and glints", sections = { "Ground and grass: cover" } },
+                { title = "Tracks", sections = { "Ground and grass: tracks" } },
+                { title = "Grass blades", sections = { "Ground and grass: blades" } },
+              } },
           } },
         { id = "tools", title = "Tools", page = 3, colour = { 0.45, 0.68, 0.98 },
           note = "The performance overlay (F9), its game-thread profiler and the console log.",
@@ -137,6 +154,95 @@ PzoptSettingsLayout = {
                 { title = "Console log", sections = { "Console log" } },
               } },
           } },
+    },
+
+    -- The settings pages draw each setting with its switch and its modifiers indented under it (PzoptSettings.nest reads
+    -- that from the labels and the order). parents: where that reading is wrong, the key's parent ("" = its own setting);
+    -- the parent must come earlier in its subcategory. offValues / onValues: a choice setting's off value when it is not
+    -- "off" / "false", and the value its switch turns on to when its default is off (else the first value that is not off).
+    parents = {
+        frameQueueLowCapDecayPct = "frameQueue", frameQueueLowCapMarginPct = "frameQueue",
+        macGlTimerQueries = "macGlCore", macPresent = "", gpuMaxFrames = "", aimHoldMs = "",
+        physicsStepHz = "vehicleSmooth", physicsStepMode = "vehicleSmooth",
+        luaLoadBudgetUs = "luaLoadStream", luaLoadNearestFirst = "luaLoadStream", luaLoadChunkSplit = "luaLoadStream", luaLoadSlack = "luaLoadStream",
+        luaLoadSigProject = "luaLoadPrefilter", luaLoadBatch = "", luaLoadNoopSkip = "", mapObjectsFast = "",
+        chunkHandoffDivisor = "", chunkHandoffCost = "slackWork", chunkHandoffSlackMaxWait = "slackWork",
+        chunkHandoffForceAnyFrame = "slackWork", chunkHandoffFrameBudgetUs = "slackWork",
+        treeRebakeLazy = "", treeRebakeLingerMs = "treeRebakeLazy", treeCutawayReach = "", treeCutawayReachPx = "treeCutawayReach",
+        treeBakeMaxChunksPerSec = "",
+        curtainDepthNudgePct = "windowsInChunkTexture",
+        bakeBudgetAdaptive = "bakeScheduler", bakeBudgetGpu = "bakeScheduler", occlusionGrantedOnly = "bakeScheduler",
+        bakeMipLevels = "", renderChunkTopUp = "", bakeBudget = "", rebakeBudget = "", rebakeMaxFrames = "rebakeBudget",
+        zoomEase = "", zoomEaseMs = "zoomEase", zoomRebakeBudget = "zoomRetain", zoomPlaceholder = "zoomRetain", zoomFrameMs = "zoomRetain",
+        bloodSettleSec = "bloodAppend", bloodRebakeCoalesceMs = "bloodAppend", bloodAppendPlants = "bloodAppend",
+        bloodAppendVegetation = "bloodAppend",
+        persistentVboFrameSync = "persistentVbo", persistentVboSlots = "persistentVbo", vboBatchKb = "",
+        lightSwitchCheckFrames = "", lightingBudget = "", lightingFlush = "lightingBudget", lightingRebakeBudget = "",
+        lightingGlobalDeltaPct = "lightingRebakeBudget", lightingStrongDelta = "",
+        roofHideDebounceFrames = "", cutawayRadius = "", gridStackInterval = "", weatherFxScalePct = "",
+        frameThreads = "", charDrawThreads = "charDrawPrep",
+        skinTransformsPrecompute = "animBonesParallel", skinPalettePrecompute = "animBonesParallel", shadowPrep = "animBonesParallel",
+        entityUpdatePipeline = "entityUpdateParallel", entityUpdatePlayerFirst = "entityUpdateParallel",
+        entityUpdateMoreStates = "entityUpdateParallel",
+        postupdateFuse = "postupdateParallel", postupdateClean = "postupdateParallel", postupdateEligibleOnWorker = "postupdateParallel",
+        postupdateVehicleOnWorker = "postupdateParallel",
+        hordeBatchVao = "hordeBatch", hordeBatchOrder = "hordeBatch", hordeBatchUnits = "hordeBatch", hordePaletteMismatch = "hordeBatch",
+        zombieSimLodTiles = "", zombieSimLodSteps = "zombieSimLodTiles", zombieCheckSpread = "",
+        zombieLodMin3d = "zombieLodDynamic", zombieLodMinBlend = "zombieLodDynamic", zombieLodUncappedFps = "zombieLodDynamic",
+        zombieLodFixed3d = "zombieLodDynamic", zombieLodHysteresis = "zombieLodDynamic", zombieLodFadeMs = "zombieLodDynamic",
+        zombieLodSpriteLight = "zombieLodDynamic", zombieFirstSightSprite = "zombieLodDynamic",
+        zombieCompositeBudgetUs = "zombieFirstSightSprite", zombieCompositeMaxPerFrame = "zombieFirstSightSprite",
+        zombieModelAddBudgetUs = "", burstGovernor = "", zombieSpawnSlackBudgetUs = "zombieSpawnSpread",
+        zombieSpawnHeavyMin = "zombieSpawnSpread", zombieSpawnMaxAgeMs = "zombieSpawnSpread", zombieSpawnAgedCapUs = "zombieSpawnSpread",
+        resumeShotDetail = "resumeShot", fileThreads = "", fileInflight = "", textureBufferMb = "",
+        gcMode = "", gcPauseMs = "gcMode", gcHeapFixed = "gcHeap", gcPreTouch = "gcHeap", gcSlackQueue = "gcSlack", luaGcNoop = "",
+        workerQosMac = "", audioLimiterStereoFold = "audioLimiter", soundTickHz = "",
+        updatePrefetch = "updateCheck", updateFromWorkshop = "updateCheck",
+        hdr = "", voxelLight = "pixelLight", pplWrapPct = "pplNormals", pplSpecPct = "pplWetSpecular",
+        godRaysLocalPct = "godRaysLocal", godRaysDoorSwingMs = "godRaysDoorLeaf", godRaysDoorDustPct = "godRaysDoorLeaf",
+        godRaysSpillPct = "godRaysSpill",
+        mirrorsWindowPct = "mirrorsWindows", mirrorsPropGlassPct = "mirrorsProps", mirrorsCutawayHoldMs = "mirrorsGeometry",
+        mirrorsViewLateralPct = "mirrorsModels", mirrorsViewDropPct = "mirrorsModels",
+        overlay = "overlaySampling", overlayLog = "overlaySampling", overlayStats = "overlaySampling", overlayPower = "overlaySampling",
+        overlayTree = "overlaySampling", overlayVerdict = "overlaySampling", overlayGraph = "overlaySampling",
+        overlayGraphHz = "overlayGraph", overlayFlame = "overlaySampling", overlayFlameDepth = "overlayFlame",
+        gameThreadProfileHz = "overlayTree", overlayTexture = "overlaySampling", overlayRefreshMs = "overlaySampling",
+        overlayCorner = "overlaySampling", overlayFont = "overlaySampling",
+        overlayFpsFollowCap = "overlayFpsColor", overlayFpsCapBluePct = "overlayFpsFollowCap", overlayFpsCapGreenPct = "overlayFpsFollowCap",
+        overlayFpsCapYellowPct = "overlayFpsFollowCap", overlayFpsBlueAbove = "overlayFpsColor", overlayFpsGreenAbove = "overlayFpsColor",
+        overlayFpsYellowAbove = "overlayFpsColor",
+    },
+    offValues = { spriteFilter = "stock", darknessFloorPct = "0" },
+    onValues = { upscaler = "fsr1" },
+
+    -- (2026-10-24, maintainer: no switch and dropdown on one line) A choice setting with an off value and two or more other
+    -- values (PzoptSettings.leaf) draws its switch on its own row and its value on a leaf row under it: the leaf's own
+    -- name, description (what it picks; the values with their notes; the setting's impact chart) and controls. `leaves[key]`
+    -- names the leaf and says what it picks ({ label, tip }; without one: "Mode" and the values' notes); false keeps the
+    -- value on the setting's row (no leaf). A choice with one value besides off is a plain switch.
+    leaves = {
+        presentPacing = { label = "Timed by", tip = "What each frame's hold is timed against: the GPU's completion, the CPU's end of the frame, or both." },
+        vrr = { label = "Mode", tip = "Follow what the display reports, or always act as if it runs variable refresh." },
+        borderlessFullscreen = { label = "Where", tip = "On Linux only (the platform whose desktops need it for variable refresh), or on every platform." },
+        vehicleSmooth = { label = "Method", tip = "How a vehicle is placed between physics steps: drawn between the last two (10 ms behind) or the last one carried forward." },
+        bloodBake = { label = "Drawn by", tip = "Who draws the floor splats into the chunk pictures: the GPU in the bake, or the CPU before it." },
+        hordeBatch = { label = "Order", tip = "Batches that keep the stock drawing order to the pixel, or the fastest order with the zombies after the other moving objects." },
+        modCompat = { label = "Mode", tip = "What happens to a setting a Java mod also patches: switched off (max compatibility) or kept on and reported (max performance)." },
+        luaTickAdaptive = { label = "Method", tip = "How the mods' per-frame time is set: a budget from the frame's headroom, or one that halves when a frame is late and grows when it is on time." },
+        corePlacement = { label = "Placement", tip = "Which cores take which threads while the switch is on." },
+        gpuPstate = { label = "Clock level", tip = "The fixed clock to hold, or the lowest one whose frame time still fits the cap." },
+        gcSlackQueue = { label = "When", tip = "When the spare-time collection runs under the frame queue." },
+        upscaler = { label = "Type", tip = "Which upscaler renders the world smaller and scales it back up. Its render size is the next setting." },
+        spriteFilter = { label = "Filter", tip = "How the world's art is sampled when it is drawn at a size other than its own." },
+        carOccupant = { label = "Drawn as", tip = "How the people inside a car are drawn behind its glass." },
+        darknessFloorPct = { label = "Floor", tip = "How much light a seen square keeps at least, in % of full light." },
+        overlayStats = { label = "Detail", tip = "How much the statistics block shows." },
+        overlayTree = { label = "Sub-phases", tip = "How many sub-phases each phase of the game-thread tree lists." },
+        overlayVerdict = { label = "Detail", tip = "The short verdict, or with the two biggest game-thread sub-phases." },
+        overlayGraph = { label = "Frames shown", tip = "How many frames the graph spans (and so its width)." },
+        overlayFlame = { label = "Placement", tip = "Where the flame graph sits and how wide it is." },
+        consoleLog = { label = "Lines", tip = "Which PZ Optimization lines reach the console." },
+        groundTracksWater = { label = "Drawn by", tip = "Who draws the water standing in the ruts: the game's puddles (with their ripples) when Puddle ripples is on, the tracks' own bake (still water), or always the puddles." },
     },
 
     -- a key no subcategory lists: its section's title prefix -> category id
@@ -153,11 +259,12 @@ PzoptSettingsLayout = {
         "zoomEase", "persistentVbo", "bloodBake", "lightInfoChunkGate", "cutawayFast", "roofHideDebounceFrames", "fogPass", "rainTiles",
         "puddleCache", "animBonesParallel", "actionEvalParallel", "charDrawPrep", "zombieLodDynamic", "playerLosFast", "noLoadingScreen",
         "resumeShot", "centerFirstLoad", "aotCache", "texCompress", "uiRetained", "mapStreetCache", "luaSkipEmpty", "corePlacement",
-        "gpuPstate", "audioLimiter", "modProfile", "updateCheck",
+        "gpuPstate", "gcHeap", "luaGcNoop", "audioLimiter", "modProfile", "updateCheck",
         "upscaler", "upscalerQuality", "dynRes", "dynResFps", "spriteFilter", "hdrAuto", "hdr", "pixelLight", "voxelLight", "torchSource",
         "sunShadows", "sunShadowStrengthPct", "entityShadows", "moonShadows", "cloudShadows", "ambientOcclusion", "godRays", "godRaysStrengthPct",
-        "reflections", "reflectionPuddles", "ripples", "ripplesStrengthPct", "ripplesRain", "ripplesWake", "mirrors", "mirrorsWindows", "mirrorsWallMirrors", "mirrorsProps", "carGlass", "carOccupant", "bloodWet", "darknessFloorPct",
+        "reflections", "reflectionPuddles", "reflectionsFlow", "ripples", "ripplesStrengthPct", "ripplesRain", "ripplesWake", "mirrors", "mirrorsWindows", "mirrorsWallMirrors", "mirrorsProps", "carGlass", "carOccupant", "bloodWet", "darknessFloorPct",
         "memoryTint", "colorGrading", "foliageSway", "foliageSwayPct", "relief", "occludedZombieOutlines",
+        "groundHexTiling", "groundMacroPct", "groundScatter", "glints", "groundTracks", "grassBlades",
         "overlaySampling", "overlay", "overlayStats", "overlayGraph", "overlayCorner", "overlayFont", "overlayFpsColor", "consoleLog" },
 
     -- tuning numbers and thread counts (Everything view); names matching expertPatterns count too, on the Performance pages
@@ -207,6 +314,10 @@ PzoptSettingsLayout = {
           cause = "The game's threads land on slow cores and the GPU clock goes up and down.",
           why = "On hybrid CPUs the game thread can end up on an efficient core; small GPUs spend frames at full resolution. These place the threads, hold the GPU clock steady, and render the world smaller when the GPU is the limit. The Low-end presets on the home page set them for you (4-core laptop, 120 km/h drive: 44 to 68 fps).",
           keys = { "corePlacement", "gpuPstate", "dynRes", "upscaler", "upscalerQuality" } },
+        { title = "Freezes with many mods or in big hordes",
+          cause = "The game runs out of Java memory and stops everything to clean it up.",
+          why = "The game ships with 3 GB of Java memory. In the Louisville horde (about 2,000 zombies) 3 GB ran 95 % full; with 132 Workshop mods 4 GB filled up and froze the game for 150-280 ms at a time, while 8 GB never did. Auto gives 4 GB, or 8 GB with 30 or more mods, never more than half your RAM; pick 6 or 8 GB yourself for a big mod list. Mods that call collectgarbage() froze the game for 120-140 ms per call; the second setting ignores those calls. Applies on the next launch.",
+          keys = { "gcHeap", "luaGcNoop", "gcMode", "gcHeapFixed" } },
         { title = "I play with other mods",
           cause = "A mod that patches the same game code can clash with an optimization.",
           why = "PZ Optimization scans the Java mods of each launch and can switch off what they patch. Max performance keeps everything on and reports clashes; Max compatibility switches the affected settings off. The main menu's compatibility check lists what it found.",
@@ -221,6 +332,20 @@ local function pzoptLayoutTr(key, fallback)
 end
 
 local PZOPT_LAYOUT_TEXT_KEYS = {
+    ["Ground and grass"] = "UI_pzopt_v9_layout_ground_category",
+    ["Ground without the tile grid, seasonal ground cover and glints, tracks that stay, grass with blades."] = "UI_pzopt_v9_layout_ground_summary",
+    ["Ground without the grid"] = "UI_pzopt_v9_layout_ground_tiling",
+    ["Ground cover and glints"] = "UI_pzopt_v9_layout_ground_cover",
+    ["Tracks"] = "UI_pzopt_v9_layout_ground_tracks",
+    ["Grass blades"] = "UI_pzopt_v9_layout_ground_grass_blades",
+    ["System, memory, sound and mods"] = "UI_pzopt_v9_layout_system_overview",
+    ["Memory (Java heap)"] = "UI_pzopt_v9_layout_memory_heap",
+    ["Mod Lua events"] = "UI_pzopt_v9_layout_mod_lua_events",
+    ["Mod Lua while chunks arrive"] = "UI_pzopt_v9_layout_mod_lua_chunks",
+    ["Mod scripts on every zombie"] = "UI_pzopt_v9_layout_mod_scripts_zombie",
+    ["Java memory (heap size), cores and power, the audio mix, other mods, updates."] = "UI_pzopt_v9_layout_system_summary",
+    ["The game runs out of Java memory and stops everything to clean it up."] = "UI_pzopt_new_ff8cd86a9aa4",
+    ["Freezes with many mods or in big hordes"] = "UI_pzopt_new_3d701cd3e96f",
     ["Drawing the horde"] = "UI_pzopt_layout_8c4a0cc8a0",
     ["Performance"] = "UI_pzopt_layout_63c9045599",
     ["Smoother frames and faster loads. Nothing here changes how the game looks."] = "UI_pzopt_layout_42709e0997",
@@ -332,6 +457,31 @@ local PZOPT_LAYOUT_TEXT_KEYS = {
     ["Horde first sight"] = "UI_pzopt_layout_horde_first_sight",
 }
 
+local PZOPT_V6_LEAF_KEYS = {
+    ["presentPacing"] = { label = "UI_pzopt_v6_leaf_presentPacing_label", tip = "UI_pzopt_v6_leaf_presentPacing_tip" },
+    ["vrr"] = { label = "UI_pzopt_v6_leaf_vrr_label", tip = "UI_pzopt_v6_leaf_vrr_tip" },
+    ["borderlessFullscreen"] = { label = "UI_pzopt_v6_leaf_borderlessFullscreen_label", tip = "UI_pzopt_v6_leaf_borderlessFullscreen_tip" },
+    ["vehicleSmooth"] = { label = "UI_pzopt_v6_leaf_vehicleSmooth_label", tip = "UI_pzopt_v6_leaf_vehicleSmooth_tip" },
+    ["bloodBake"] = { label = "UI_pzopt_v6_leaf_bloodBake_label", tip = "UI_pzopt_v6_leaf_bloodBake_tip" },
+    ["hordeBatch"] = { label = "UI_pzopt_v6_leaf_hordeBatch_label", tip = "UI_pzopt_v6_leaf_hordeBatch_tip" },
+    ["modCompat"] = { label = "UI_pzopt_v6_leaf_modCompat_label", tip = "UI_pzopt_v6_leaf_modCompat_tip" },
+    ["luaTickAdaptive"] = { label = "UI_pzopt_v6_leaf_luaTickAdaptive_label", tip = "UI_pzopt_v6_leaf_luaTickAdaptive_tip" },
+    ["corePlacement"] = { label = "UI_pzopt_v6_leaf_corePlacement_label", tip = "UI_pzopt_v6_leaf_corePlacement_tip" },
+    ["gpuPstate"] = { label = "UI_pzopt_v6_leaf_gpuPstate_label", tip = "UI_pzopt_v6_leaf_gpuPstate_tip" },
+    ["gcSlackQueue"] = { label = "UI_pzopt_v6_leaf_gcSlackQueue_label", tip = "UI_pzopt_v6_leaf_gcSlackQueue_tip" },
+    ["upscaler"] = { label = "UI_pzopt_v6_leaf_upscaler_label", tip = "UI_pzopt_v6_leaf_upscaler_tip" },
+    ["spriteFilter"] = { label = "UI_pzopt_v6_leaf_spriteFilter_label", tip = "UI_pzopt_v6_leaf_spriteFilter_tip" },
+    ["carOccupant"] = { label = "UI_pzopt_v6_leaf_carOccupant_label", tip = "UI_pzopt_v6_leaf_carOccupant_tip" },
+    ["darknessFloorPct"] = { label = "UI_pzopt_v6_leaf_darknessFloorPct_label", tip = "UI_pzopt_v6_leaf_darknessFloorPct_tip" },
+    ["overlayStats"] = { label = "UI_pzopt_v6_leaf_overlayStats_label", tip = "UI_pzopt_v6_leaf_overlayStats_tip" },
+    ["overlayTree"] = { label = "UI_pzopt_v6_leaf_overlayTree_label", tip = "UI_pzopt_v6_leaf_overlayTree_tip" },
+    ["overlayVerdict"] = { label = "UI_pzopt_v6_leaf_overlayVerdict_label", tip = "UI_pzopt_v6_leaf_overlayVerdict_tip" },
+    ["overlayGraph"] = { label = "UI_pzopt_v6_leaf_overlayGraph_label", tip = "UI_pzopt_v6_leaf_overlayGraph_tip" },
+    ["overlayFlame"] = { label = "UI_pzopt_v6_leaf_overlayFlame_label", tip = "UI_pzopt_v6_leaf_overlayFlame_tip" },
+    ["consoleLog"] = { label = "UI_pzopt_v6_leaf_consoleLog_label", tip = "UI_pzopt_v6_leaf_consoleLog_tip" },
+    ["groundTracksWater"] = { label = "UI_pzopt_v6_leaf_groundTracksWater_label", tip = "UI_pzopt_v6_leaf_groundTracksWater_tip" },
+}
+
 local function pzoptLayoutText(text)
     local key = PZOPT_LAYOUT_TEXT_KEYS[text]
     return key and pzoptLayoutTr(key, text) or text
@@ -353,4 +503,12 @@ for _, problem in ipairs(PzoptSettingsLayout.problems or {}) do
     problem.title = pzoptLayoutText(problem.title)
     problem.cause = pzoptLayoutText(problem.cause)
     problem.why = pzoptLayoutText(problem.why)
+end
+
+for id, leaf in pairs(PzoptSettingsLayout.leaves or {}) do
+    local keys = PZOPT_V6_LEAF_KEYS[id]
+    if keys then
+        leaf.label = pzoptLayoutTr(keys.label, leaf.label)
+        leaf.tip = pzoptLayoutTr(keys.tip, leaf.tip)
+    end
 end

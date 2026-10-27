@@ -176,7 +176,7 @@ end
 local function bodyHead(d)
     local t = ""
     if d.mode == "off" then
-        return pzoptTr("UI_pzopt_text_pzopt_mainscreen_compat_bd524127c1", "The check is off (Options > PZ Optimization > System, sound and mods > Mods and multiplayer > Java mods: off), so no mod was read at this launch. ")
+        return "The check is off (PZ OPTIMIZATION > Optimizations > System, memory, sound and mods > Mods and multiplayer > Java mods: off), so no mod was read at this launch. "
             .. pzoptTr("UI_pzopt_text_pzopt_mainscreen_compat_132b12dfc8", "Set it to auto and restart the game to see what your mods change.")
     end
     local switched = {}
@@ -552,3 +552,61 @@ function PzoptCompatApi.restart()
     if not ok or not started then print("[pzopt] mod compatibility: could not start the restart helper, quitting only") end
     MainScreen.instance:quitToDesktop()
 end
+
+-- The mods' per-frame Lua list (2026-10-25, pzopt.LuaTick): which mods have OnTick / OnPlayerUpdate / OnTickEvenPaused
+-- handlers, how many of them the code scan keeps every frame, their cost this session, and the player's choice per mod:
+-- auto (the scan and the cost decide), every frame (luaTickModsEveryFrame), capped (luaTickModsCapped). Next launch.
+local TICK_EVERY, TICK_CAPPED = "luaTickModsEveryFrame", "luaTickModsCapped"
+
+function PzoptCompatApi.tickMods()
+    local ok, text = pcall(function() return perf():getPzoptLuaTickMods() end)
+    local out = {}
+    for line in ((ok and text) or ""):gmatch("[^\n]+") do
+        local f = split(line)
+        table.insert(out, { id = f[1], name = f[2], n = tonumber(f[3]) or 0, pinned = tonumber(f[4]) or 0, reason = f[5] or "",
+            costUs = tonumber(f[6]) or -1, events = f[7] or "" })
+    end
+    table.sort(out, function(a, b)
+        if a.costUs ~= b.costUs then return a.costUs > b.costUs end
+        return string.lower(a.name) < string.lower(b.name)
+    end)
+    return out
+end
+
+local function idSet(key)
+    local set, list = {}, {}
+    for id in (perf():getPzoptOptionSaved(key) or ""):gmatch("[^,;]+") do
+        id = id:gsub("^%s+", ""):gsub("%s+$", "")
+        if id ~= "" and not set[id] then set[id] = true table.insert(list, id) end
+    end
+    return set, list
+end
+
+function PzoptCompatApi.tickMode(id)
+    if idSet(TICK_CAPPED)[id] then return "capped" end
+    if idSet(TICK_EVERY)[id] then return "every" end
+    return "auto"
+end
+
+-- "" when the lists can be changed, else who pins them (pzopt.properties / -D)
+function PzoptCompatApi.tickPinned()
+    local p = perf()
+    local a, b = p:getPzoptOptionPinnedBy(TICK_EVERY) or "", p:getPzoptOptionPinnedBy(TICK_CAPPED) or ""
+    return a ~= "" and a or b
+end
+
+function PzoptCompatApi.setTickMode(id, mode)
+    if PzoptCompatApi.tickPinned() ~= "" then return end
+    local p = perf()
+    for _, key in ipairs({ TICK_EVERY, TICK_CAPPED }) do
+        local _, list = idSet(key)
+        local keep = {}
+        for _, x in ipairs(list) do if x ~= id then table.insert(keep, x) end end
+        if (mode == "every" and key == TICK_EVERY) or (mode == "capped" and key == TICK_CAPPED) then table.insert(keep, id) end
+        p:setPzoptOption(key, table.concat(keep, ","))
+    end
+    PzoptLogInfo("[pzopt] mod Lua events: " .. tostring(id) .. " -> " .. tostring(mode) .. " for the next launch")
+end
+
+PzoptCompatApi.TICK_NAMES = { auto = "Auto", every = "Every frame", capped = "Capped" }
+PzoptCompatApi.TICK_KEYS = { TICK_EVERY, TICK_CAPPED }

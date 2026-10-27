@@ -6,9 +6,11 @@ PZ_Optimization의 최적화, 화면 향상, 프로파일러 설정과 각 옵�
 
 ## 지원 버전
 
+**GitHub 소스 업데이트:** 제작자가 Discord에서 제공한 589f2f3f 빌드를 기준으로 확인한 한국어 패치입니다. Steam 창작마당에는 이 업데이트가 배포되지 않았습니다.
+
 - Project Zomboid 42.21
 - Revision: `4a0e9546ec`
-- PZ_Optimization: `4be8d4ea`
+- PZ_Optimization: `589f2f3f`
 
 ## 설치
 
@@ -36,6 +38,6 @@ Mod ID: `PZOptKorean`
 
 - Project Zomboid 42.21
 - Revision: `4a0e9546ec`
-- PZ_Optimization: `4be8d4ea`
+- PZ_Optimization: `589f2f3f`
 
 게임 또는 PZ_Optimization이 업데이트될 경우 호환성을 다시 확인해야 할 수 있습니다.
