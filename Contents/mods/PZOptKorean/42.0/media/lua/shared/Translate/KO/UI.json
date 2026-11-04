@@ -2996,5 +2996,11 @@
   "UI_pzopt_v9_layout_mod_lua_events": "모드 Lua 이벤트",
   "UI_pzopt_v9_layout_mod_lua_chunks": "청크 로딩 중 모드 Lua",
   "UI_pzopt_v9_layout_mod_scripts_zombie": "좀비마다 실행되는 모드 스크립트",
-  "UI_pzopt_v9_layout_system_summary": "Java 힙 메모리, CPU 코어와 전력 관리, 오디오 믹싱, 다른 모드 및 업데이트를 설정합니다."
+  "UI_pzopt_v9_layout_system_summary": "Java 힙 메모리, CPU 코어와 전력 관리, 오디오 믹싱, 다른 모드 및 업데이트를 설정합니다.",
+  "UI_pzopt_label_voxelLightSkyFloorPct": "복셀 조명: 실내 깊은 곳의 최소 자연광(%)",
+  "UI_pzopt_tip_voxelLightSkyFloorPct": "창문과 출입구에서 멀리 떨어진 실내 공간에 남는 자연광의 최소 비율입니다. 기본 게임은 실외 자연광의 약 절반을 유지합니다. 값을 낮추면 큰 건물 안쪽이 기본 게임보다 어두워지고, 높이면 밝아집니다. 다음 게임 실행부터 적용됩니다.",
+  "UI_pzopt_label_voxelLightSkyDecayPct": "복셀 조명: 자연광의 실내 도달 거리(%)",
+  "UI_pzopt_tip_voxelLightSkyDecayPct": "창문이나 출입구로 들어온 자연광이 실내에서 한 칸 더 이동했을 때 유지되는 비율입니다. 값을 높이면 빛이 더 안쪽까지 전달되며, 위의 최소 자연광 비율에 도달할 때까지 점차 감소합니다. 다음 게임 실행부터 적용됩니다.",
+  "UI_pzopt_note_skyFloorDefault": "기본값: 기본 게임의 가장 어두운 실내 수준",
+  "UI_pzopt_note_skyFloorDarker": "기본 게임보다 어두움"
 }

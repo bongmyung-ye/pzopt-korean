@@ -2996,5 +2996,11 @@
   "UI_pzopt_v9_layout_mod_lua_events": "Mod Lua events",
   "UI_pzopt_v9_layout_mod_lua_chunks": "Mod Lua while chunks arrive",
   "UI_pzopt_v9_layout_mod_scripts_zombie": "Mod scripts on every zombie",
-  "UI_pzopt_v9_layout_system_summary": "Java memory (heap size), cores and power, the audio mix, other mods, updates."
+  "UI_pzopt_v9_layout_system_summary": "Java memory (heap size), cores and power, the audio mix, other mods, updates.",
+  "UI_pzopt_label_voxelLightSkyFloorPct": "Voxel lighting: least daylight deep inside rooms (%)",
+  "UI_pzopt_tip_voxelLightSkyFloorPct": "The least of the outdoor daylight a room keeps far from its windows and doorways. The base game keeps about half of it; lower makes the inside of large buildings darker than in the base game, higher brighter. Applies on the next launch.",
+  "UI_pzopt_label_voxelLightSkyDecayPct": "Voxel lighting: how far daylight reaches into rooms (%)",
+  "UI_pzopt_tip_voxelLightSkyDecayPct": "How much of the daylight coming in through a window or doorway is left one square further into the room. Higher carries it deeper into the room before it falls to the least daylight above. Applies on the next launch.",
+  "UI_pzopt_note_skyFloorDefault": "default: as the base game's darkest rooms",
+  "UI_pzopt_note_skyFloorDarker": "darker than the base game"
 }
